@@ -1,0 +1,214 @@
+package main
+
+import (
+	"time"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
+)
+
+const (
+	lobbyIsStale = 5 //seconds
+	testDelay    = 1 //seconds
+)
+
+var (
+	docStyle = lipgloss.NewStyle().Margin(1, 2)
+
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#25A065")).
+			Padding(0, 1)
+
+	statusMessageStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
+				Render
+)
+
+type listKeyMap struct {
+	toggleTitleBar   key.Binding
+	toggleStatusBar  key.Binding
+	togglePagination key.Binding
+	toggleHelpMenu   key.Binding
+	insertItem       key.Binding
+}
+
+func newListKeyMap() *listKeyMap {
+	return &listKeyMap{
+		insertItem: key.NewBinding(
+			key.WithKeys("n"),
+			key.WithHelp("n", "new"),
+		),
+		toggleTitleBar: key.NewBinding(
+			key.WithKeys("T"),
+			key.WithHelp("T", "toggle title"),
+		),
+		toggleStatusBar: key.NewBinding(
+			key.WithKeys("S"),
+			key.WithHelp("S", "toggle status"),
+		),
+		togglePagination: key.NewBinding(
+			key.WithKeys("P"),
+			key.WithHelp("P", "toggle pagination"),
+		),
+		toggleHelpMenu: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("H", "toggle help"),
+		),
+	}
+}
+
+type lobbyModel struct {
+	list         list.Model
+	keys         *listKeyMap
+	delegateKeys *delegateKeyMap
+	lastUpdate   time.Time
+}
+
+type itemsMsg struct {
+	items []list.Item
+}
+
+func newLobby() lobbyModel {
+	var (
+		delegateKeys = newDelegateKeyMap()
+		listKeys     = newListKeyMap()
+	)
+
+	// Make initial list of items
+	const numItems = 0
+	items := make([]list.Item, numItems)
+
+	// Setup list
+	delegate := newItemDelegate(delegateKeys)
+	gamesList := list.New(items, delegate, 0, 0)
+	gamesList.Styles.Title = titleStyle
+	gamesList.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			listKeys.insertItem,
+			listKeys.toggleTitleBar,
+			listKeys.toggleStatusBar,
+			listKeys.togglePagination,
+			listKeys.toggleHelpMenu,
+		}
+	}
+
+	return lobbyModel{
+		list:         gamesList,
+		keys:         listKeys,
+		delegateKeys: delegateKeys,
+		lastUpdate:   time.Now(),
+	}
+}
+
+type tickMsg time.Time
+
+func doTick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
+func (lm lobbyModel) Init() tea.Cmd {
+	_, cmd := lm.updateIfStale(0)
+	return tea.Batch(cmd, doTick(), tea.WindowSize(), lm.list.StartSpinner())
+}
+
+func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+
+	case joinGameMsg:
+		wrm := newWaitingRoom()
+		wrm.list.Title = "GameID: " + msg.gameId.GameId
+		cmd = wrm.Init()
+		return wrm, cmd
+
+	case tickMsg:
+		m, cmd = m.updateIfStale(lobbyIsStale)
+		cmds = append(cmds, cmd, doTick())
+
+	case itemsMsg:
+		cmd = m.list.SetItems(msg.items)
+		m.lastUpdate = time.Now()
+		cmds = append(cmds, cmd)
+		m.list.StopSpinner()
+		cmds = append(cmds, cmd)
+
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
+
+	case tea.KeyMsg:
+		// Don't match any of the keys below if we're actively filtering.
+		if m.list.FilterState() == list.Filtering {
+			break
+		}
+
+		switch {
+
+		case key.Matches(msg, m.keys.toggleTitleBar):
+			v := !m.list.ShowTitle()
+			m.list.SetShowTitle(v)
+			m.list.SetShowFilter(v)
+			m.list.SetFilteringEnabled(v)
+			return m, nil
+
+		case key.Matches(msg, m.keys.toggleStatusBar):
+			m.list.SetShowStatusBar(!m.list.ShowStatusBar())
+			return m, nil
+
+		case key.Matches(msg, m.keys.togglePagination):
+			m.list.SetShowPagination(!m.list.ShowPagination())
+			return m, nil
+
+		case key.Matches(msg, m.keys.toggleHelpMenu):
+			m.list.SetShowHelp(!m.list.ShowHelp())
+			return m, nil
+
+		case key.Matches(msg, m.keys.insertItem):
+			mg := newMakeGame(m)
+			return mg, mg.Init()
+		}
+	}
+
+	// This will also call our delegate's update function.
+	newListModel, cmd := m.list.Update(msg)
+	m.list = newListModel
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+func (lm lobbyModel) View() string {
+	return docStyle.Render(lm.list.View())
+}
+
+func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
+	if lm.list.FilterState() == list.Filtering {
+		return lm, nil // Don't update midsearch
+	}
+
+	currentTime := time.Now()
+
+	diff := currentTime.Sub(lm.lastUpdate)
+	if diff >= (time.Second * time.Duration(stale)) {
+		log.Debug("Stale Lobby ", diff)
+		cmd := lm.list.StartSpinner()
+
+		return lm, tea.Batch(cmd, func() tea.Msg {
+			time.Sleep(time.Second * testDelay)
+			newItems := lobbyRequest()
+			return itemsMsg{
+				items: newItems,
+			}
+		})
+	}
+
+	return lm, nil
+}

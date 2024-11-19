@@ -1,0 +1,291 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/cookiejar"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/log"
+)
+
+var (
+	jar, _  = cookiejar.New(nil)
+	baseurl = "http://localhost:8000"
+)
+
+type register struct {
+	Username string `json:"username"`
+}
+
+type game struct {
+	GameId string `json:"gameId"`
+	Fill   string `json:"fill"`
+}
+
+func (g game) Title() string       { return g.GameId }
+func (g game) Description() string { return "Fill: " + g.Fill }
+func (g game) FilterValue() string { return g.GameId }
+
+type gameConfig struct {
+	GameType       string `json:"gameType"`
+	MaxPlayers     int    `json:"maxPlayers"`
+	SwapBottomCard bool   `json:"swapBottomCard"`
+}
+
+type gamesList struct {
+	Games []game `json:"games"`
+}
+
+type player struct {
+	Ready bool   `json:"ready"`
+	Name  string `json:"name"`
+	Team  string `json:"team"` // Only relevant for 4 player games.
+}
+
+func (p player) Title() string       { return p.Name + ": " + p.ready() }
+func (p player) Description() string { return p.Team }
+func (p player) FilterValue() string { return p.Name }
+func (p player) ready() string {
+	if p.Ready {
+		return "ready"
+	} else {
+		return "not ready"
+	}
+}
+
+type waitingRoom struct {
+	Players []player `json:"players"`
+	Fill    string   `json:"fill"`
+	items   []list.Item
+}
+
+type newGame struct {
+	GameId string `json:"gameId"`
+}
+
+func (wr waitingRoom) String() string {
+	sb := strings.Builder{}
+	sb.WriteString("fill:")
+	sb.WriteString(wr.Fill)
+	for i := range wr.Players {
+		sb.WriteString(" ready:")
+		sb.WriteString(wr.Players[i].ready())
+		sb.WriteString(" name:")
+		sb.WriteString(wr.Players[i].Name)
+		sb.WriteString(" team:")
+		sb.WriteString(wr.Players[i].Team)
+	}
+	return sb.String()
+}
+
+type gameId struct {
+	GameId string `json:"gameId"`
+}
+
+func statusRequest() bool {
+	requestURL := fmt.Sprintf("%s/status", baseurl)
+	_, err := http.Get(requestURL)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	return true
+}
+
+// {"username" : "Guest"}
+func registerRequest(register register) bool {
+	payload, _ := json.Marshal(register)
+	reader := bytes.NewReader(payload)
+	requestURL := fmt.Sprintf("%s/register", baseurl)
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return true
+}
+
+func lobbyRequest() []list.Item {
+	requestURL := fmt.Sprintf("%s/lobby", baseurl)
+	items := []list.Item{}
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return items
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return items
+	}
+
+	games := gamesList{}
+	json.Unmarshal([]byte(body.String()), &games)
+
+	for i := range games.Games {
+		items = append(items, games.Games[i])
+	}
+
+	return items
+}
+
+func makeGameRequest(gc gameConfig) newGame {
+	payload, _ := json.Marshal(gc)
+	reader := bytes.NewReader(payload)
+	requestURL := fmt.Sprintf("%s/makegame", baseurl)
+	game := newGame{}
+
+	client := &http.Client{Jar: jar}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return game
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return game
+	}
+
+	json.Unmarshal([]byte(body.String()), &game)
+
+	return game
+}
+
+func waitingRoomRequest() waitingRoom {
+	requestURL := fmt.Sprintf("%s/waitingroom", baseurl)
+	items := []list.Item{}
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return waitingRoom{}
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return waitingRoom{}
+	}
+
+	waitingroom := waitingRoom{}
+	json.Unmarshal([]byte(body.String()), &waitingroom)
+
+	for i := range waitingroom.Players {
+		items = append(items, waitingroom.Players[i])
+	}
+
+	waitingroom.items = items
+
+	return waitingroom
+}
+
+func leaveGameRequest() bool {
+	reader := bytes.NewBufferString("")
+	requestURL := fmt.Sprintf("%s/leavegame", baseurl)
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	log.Debug("Left the game.")
+
+	return true
+}
+
+func readyRequest() bool {
+	reader := bytes.NewBufferString("")
+	requestURL := fmt.Sprintf("%s/ready", baseurl)
+
+	client := &http.Client{Jar: jar}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return true
+}
+
+func startGameRequest() bool {
+	reader := bytes.NewBufferString("")
+	requestURL := fmt.Sprintf("%s/start", baseurl)
+
+	client := &http.Client{Jar: jar}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return true
+}
+
+func joinGameRequest(gameId gameId) bool {
+	payload, _ := json.Marshal(gameId)
+	reader := bytes.NewReader(payload)
+	requestURL := fmt.Sprintf("%s/joingame", baseurl)
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return true
+}

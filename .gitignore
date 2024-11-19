@@ -8,6 +8,12 @@
 *.so
 *.dylib
 
+# text editor
+.vscode
+
+# debug files
+*.log
+
 # Test binary, built with `go test -c`
 *.test
 
