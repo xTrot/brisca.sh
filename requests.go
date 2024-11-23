@@ -61,6 +61,7 @@ func (p player) ready() string {
 type waitingRoom struct {
 	Players []player `json:"players"`
 	Fill    string   `json:"fill"`
+	Started bool     `json:"started"`
 	items   []list.Item
 }
 
@@ -72,6 +73,12 @@ func (wr waitingRoom) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("fill:")
 	sb.WriteString(wr.Fill)
+	sb.WriteString(" started:")
+	if wr.Started {
+		sb.WriteString("true")
+	} else {
+		sb.WriteString("false")
+	}
 	for i := range wr.Players {
 		sb.WriteString(" ready:")
 		sb.WriteString(wr.Players[i].ready())
@@ -89,9 +96,14 @@ type gameId struct {
 
 func statusRequest() bool {
 	requestURL := fmt.Sprintf("%s/status", baseurl)
-	_, err := http.Get(requestURL)
+	res, err := http.Get(requestURL)
 	if err != nil {
 		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
 		return false
 	}
 
@@ -114,6 +126,11 @@ func registerRequest(register register) bool {
 		return false
 	}
 
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
+		return false
+	}
+
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
@@ -130,6 +147,11 @@ func lobbyRequest() []list.Item {
 	res, err := client.Get(requestURL)
 	if err != nil {
 		log.Error("error making http request: %s\n", err)
+		return items
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
 		return items
 	}
 
@@ -166,6 +188,11 @@ func makeGameRequest(gc gameConfig) newGame {
 		return game
 	}
 
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
+		return game
+	}
+
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	body := new(strings.Builder)
@@ -191,6 +218,11 @@ func waitingRoomRequest() waitingRoom {
 	res, err := client.Get(requestURL)
 	if err != nil {
 		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return waitingRoom{}
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
 		return waitingRoom{}
 	}
 
@@ -229,9 +261,12 @@ func leaveGameRequest() bool {
 		return false
 	}
 
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
+		return false
+	}
 
-	log.Debug("Left the game.")
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
 }
@@ -248,6 +283,11 @@ func readyRequest() bool {
 		return false
 	}
 
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
+		return false
+	}
+
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
@@ -255,13 +295,18 @@ func readyRequest() bool {
 
 func startGameRequest() bool {
 	reader := bytes.NewBufferString("")
-	requestURL := fmt.Sprintf("%s/start", baseurl)
+	requestURL := fmt.Sprintf("%s/startgame", baseurl)
 
 	client := &http.Client{Jar: jar}
 
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
 		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
 		return false
 	}
 
@@ -282,6 +327,11 @@ func joinGameRequest(gameId gameId) bool {
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
 		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
 		return false
 	}
 

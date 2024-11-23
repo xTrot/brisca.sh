@@ -53,7 +53,24 @@ func newWaitingRoom() waitingRoomModel {
 		list: list.New([]list.Item{}, list.DefaultDelegate{}, 0, 0),
 		keys: listKeys,
 	}
+
+	wrm.list.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			listKeys.ready,
+			listKeys.start,
+			listKeys.leave,
+		}
+	}
+
+	wrm.list.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			listKeys.ready,
+			listKeys.start,
+			listKeys.leave,
+		}
+	}
 	wrm.list.Title = "User " + username
+	wrm.list.DisableQuitKeybindings()
 	wrm.list.SetFilteringEnabled(false)
 	wrm.list.SetShowStatusBar(false)
 	wrm.list.SetShowPagination(false)
@@ -69,8 +86,17 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 
+	case updateWRMsg:
+		m.wr = msg.wr
+		cmd = m.list.SetItems(m.wr.items)
+		cmds = append(cmds, cmd)
+		cmds = append(cmds, every(wrUpdateInterval))
+		if msg.wr.Started {
+			panic("from if, startGame not implemented yet.")
+		}
+
 	case startGameMsg:
-		panic("startGame not implemented yet.")
+		panic("from case, startGame not implemented yet.")
 
 	case leaveGameMsg:
 		lobby := newLobby()
@@ -79,12 +105,6 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		lm, cmd := lobby.Update(msg)
 		cmds = append(cmds, cmd)
 		return lm, tea.Batch(cmds...)
-
-	case updateWRMsg:
-		m.wr = msg.wr
-		cmd = m.list.SetItems(m.wr.items)
-		cmds = append(cmds, cmd)
-		cmds = append(cmds, every(wrUpdateInterval))
 
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
