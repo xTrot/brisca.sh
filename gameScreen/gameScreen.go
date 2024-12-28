@@ -47,10 +47,15 @@ var (
 	emptyBoxStyle = lipgloss.NewStyle().
 			Align(lipgloss.Center, lipgloss.Center).
 			BorderStyle(lipgloss.HiddenBorder())
-	boxStyle = lipgloss.NewStyle().
-			Align(lipgloss.Center, lipgloss.Center).
+	tableBoxStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("69"))
+			BorderForeground(lipgloss.Color("82"))
+	playerBoxStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("240"))
+	activePlayerBoxStyle = lipgloss.NewStyle().
+				BorderStyle(lipgloss.NormalBorder()).
+				BorderForeground(lipgloss.Color("69"))
 	helpStyle = lipgloss.NewStyle().
 			Align(lipgloss.Center, lipgloss.Center).
 			Foreground(lipgloss.Color("241"))
@@ -107,11 +112,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
-		m.boxes[0][0].view = m.spinner.View()
 		cmds = append(cmds, cmd)
 	case timer.TickMsg:
 		m.timer, cmd = m.timer.Update(msg)
-		m.boxes[0][2].view = m.timer.View()
 		cmds = append(cmds, cmd)
 	}
 	return m, tea.Batch(cmds...)
@@ -129,21 +132,48 @@ func (m mainModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 		thirdHeight := wholeHeight / 3
 		midWidth := wholeWidth - (2 * thirdWidth)
 		midHeight := wholeHeight - (2 * thirdHeight)
+
+		// Blank Top Left
 		m.boxes[0][0].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
-		m.boxes[0][1].style = boxStyle.Width(midWidth).Height(thirdHeight)
+
+		// Second Player(2,3), Third Player(4)
+		m.boxes[0][1].style = playerBoxStyle.Width(midWidth).Height(thirdHeight)
+
+		// Blank Top Right
 		m.boxes[0][2].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
-		m.boxes[1][0].style = boxStyle.Width(thirdWidth).Height(midHeight)
-		m.boxes[1][1].style = boxStyle.Width(midWidth).Height(midHeight)
-		m.boxes[1][2].style = boxStyle.Width(thirdWidth).Height(midHeight)
+		// Second Player(4)
+		m.boxes[1][0].style = emptyBoxStyle.Width(thirdWidth).Height(midHeight)
+
+		// Table
+		m.boxes[1][1].style = tableBoxStyle.Width(midWidth).Height(midHeight)
+
+		// Last Player(3,4)
+		m.boxes[1][2].style = playerBoxStyle.Width(thirdWidth).Height(midHeight)
+
+		// Blank Bottom Left
 		m.boxes[2][0].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
-		m.boxes[2][1].style = boxStyle.Width(midWidth).Height(thirdHeight)
+
+		// This player
+		m.boxes[2][1].style = activePlayerBoxStyle.Width(midWidth).Height(thirdHeight)
+
+		// Blank Bottom Right
 		m.boxes[2][2].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
+
 		return resizeMsg{model: m}
 	}
 }
 
 func (m mainModel) View() string {
 	var s string
+	m.boxes[0][0].view = m.spinner.View()
+	m.boxes[0][1].view = "Player2 Score: 10\n  Score Pile:\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7] ..."
+	// m.boxes[0][2].view =
+	// m.boxes[1][0].view =
+	m.boxes[1][1].view = "Table:\n  Deck: 40\n  Suit Card: [🪵: 3]\n\n  In Play:\n  [⚔️: 1] [🪙: 5] [🏆:10]"
+	m.boxes[1][2].view = "1234512345123451234512345 Score: 10\n  Score Pile:\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7] ..."
+	// m.boxes[2][0].view =
+	m.boxes[2][1].view = "xTrot Score: 10\n  Score Pile:\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7] ..."
+	// m.boxes[2][2].view =
 	for i := 0; i < len(m.boxes); i++ {
 		row := lipgloss.JoinHorizontal(lipgloss.Top,
 			m.boxes[i][0].style.Render(m.boxes[i][0].view),
@@ -152,9 +182,9 @@ func (m mainModel) View() string {
 		)
 		s = lipgloss.JoinVertical(lipgloss.Top, s, row)
 	}
-	s = lipgloss.JoinVertical(lipgloss.Top, s, "Hand: ")
-	s = lipgloss.JoinVertical(lipgloss.Top, s, "Status: ")
-	s = lipgloss.JoinVertical(lipgloss.Center, s, helpStyle.Render("<-- -->: select card      enter: play card"))
+	s = lipgloss.JoinVertical(lipgloss.Top, s, "Hand: 1:[🪵: 5] 2:[⚔️:11] 3:[🪙: 1]")
+	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, "Status: Your Turn, timer: ", m.timer.View()))
+	s = lipgloss.JoinVertical(lipgloss.Center, s, helpStyle.Render("← →: select card      enter: play card"))
 	return s
 }
 
@@ -183,7 +213,7 @@ func main() {
 
 	log.Info("Current log Level ", log.GetLevel())
 
-	p := tea.NewProgram(newModel(time.Second*10), tea.WithAltScreen())
+	p := tea.NewProgram(newModel(time.Second*60), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
