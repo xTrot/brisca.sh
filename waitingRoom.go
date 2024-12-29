@@ -92,11 +92,13 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, every(wrUpdateInterval))
 		if msg.wr.Started {
-			panic("from if, startGame not implemented yet.")
+			gs := newGSModel(time.Minute)
+			return gs, gs.Init()
 		}
 
 	case startGameMsg:
-		panic("from case, startGame not implemented yet.")
+		gs := newGSModel(time.Minute)
+		return gs, gs.Init()
 
 	case leaveGameMsg:
 		lobby := newLobby()

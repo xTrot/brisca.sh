@@ -2,33 +2,12 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
-)
-
-/*
-This example assumes an existing understanding of commands and messages. If you
-haven't already read our tutorials on the basics of Bubble Tea and working
-with commands, we recommend reading those first.
-
-Find them at:
-https://github.com/charmbracelet/bubbletea/tree/master/tutorials/commands
-https://github.com/charmbracelet/bubbletea/tree/master/tutorials/basics
-*/
-
-// sessionState is used to track which model is focused
-type sessionState uint
-
-const (
-	defaultTime              = time.Minute
-	timerView   sessionState = iota
-	spinnerView
 )
 
 var (
@@ -56,9 +35,11 @@ var (
 	activePlayerBoxStyle = lipgloss.NewStyle().
 				BorderStyle(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color("69"))
-	helpStyle = lipgloss.NewStyle().
+	gsHelpStyle = lipgloss.NewStyle().
 			Align(lipgloss.Center, lipgloss.Center).
 			Foreground(lipgloss.Color("241"))
+	selectedCardStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("69"))
 	windowWidthMin  = 80
 	windowHighttMin = 24
 )
@@ -68,16 +49,17 @@ type box struct {
 	style lipgloss.Style
 }
 
-type mainModel struct {
-	state   sessionState
-	timer   timer.Model
-	spinner spinner.Model
-	index   int
-	boxes   [3][3]box
+type gsModel struct {
+	timer        timer.Model
+	spinner      spinner.Model
+	index        int
+	boxes        [3][3]box
+	hand         []card
+	selectedCard int
 }
 
-func newModel(timeout time.Duration) mainModel {
-	m := mainModel{state: timerView}
+func newGSModel(timeout time.Duration) gsModel {
+	m := gsModel{}
 	m.timer = timer.New(timeout)
 	m.spinner = spinner.New()
 	var boxes [3][3]box
@@ -89,15 +71,16 @@ func newModel(timeout time.Duration) mainModel {
 		}
 	}
 	m.boxes = boxes
+	m.selectedCard = 0
 	return m
 }
 
-func (m mainModel) Init() tea.Cmd {
+func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
 	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize())
 }
 
-func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
@@ -109,22 +92,32 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "left":
+			handSize := len(m.hand)
+			rawMove := m.selectedCard - 1
+			m.selectedCard = (rawMove%handSize + handSize) % handSize
+			return m, nil
+		case "right":
+			m.selectedCard = (m.selectedCard + 1) % len(m.hand)
+			return m, nil
 		}
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
 	case timer.TickMsg:
 		m.timer, cmd = m.timer.Update(msg)
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, cmd, updateHand)
+	case updateHandMsg:
+		m.hand = msg.hand
 	}
 	return m, tea.Batch(cmds...)
 }
 
 type resizeMsg struct {
-	model mainModel
+	model gsModel
 }
 
-func (m mainModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
+func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	return m, func() tea.Msg {
 		wholeWidth := max(msg.Width, windowWidthMin) - 6        // 6 to account for borders
 		wholeHeight := max(msg.Height, windowHighttMin) - 6 - 3 // Space reserved for bars
@@ -163,9 +156,8 @@ func (m mainModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m mainModel) View() string {
+func (m gsModel) View() string {
 	var s string
-	m.boxes[0][0].view = m.spinner.View()
 	m.boxes[0][1].view = "Player2 Score: 10\n  Score Pile:\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7] ..."
 	// m.boxes[0][2].view =
 	// m.boxes[1][0].view =
@@ -182,13 +174,13 @@ func (m mainModel) View() string {
 		)
 		s = lipgloss.JoinVertical(lipgloss.Top, s, row)
 	}
-	s = lipgloss.JoinVertical(lipgloss.Top, s, "Hand: 1:[🪵: 5] 2:[⚔️:11] 3:[🪙: 1]")
+	s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
 	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, "Status: Your Turn, timer: ", m.timer.View()))
-	s = lipgloss.JoinVertical(lipgloss.Center, s, helpStyle.Render("← →: select card      enter: play card"))
+	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render("← →: select card      enter: play card"))
 	return s
 }
 
-func (m *mainModel) Next() {
+func (m *gsModel) Next() {
 	if m.index == len(spinners)-1 {
 		m.index = 0
 	} else {
@@ -196,26 +188,32 @@ func (m *mainModel) Next() {
 	}
 }
 
-func main() {
-
-	f, err := tea.LogToFile("debug.log", "help")
-	if err != nil {
-		fmt.Println("Couldn't open a file for logging:", err)
-		os.Exit(1)
+func (m *gsModel) handView() string {
+	var s string
+	s = "Hand:"
+	for i := range len(m.hand) {
+		card := m.hand[i]
+		if m.selectedCard == i {
+			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(renderCard(card)))
+		} else {
+			s += fmt.Sprintf("%2d:%s", i+1, renderCard(card))
+		}
 	}
-	log.SetOutput(f)
-	defer f.Close() // nolint:errcheck
+	return s
+}
 
-	if os.Getenv("HELP_DEBUG") != "" {
-		log.SetLevel(log.DebugLevel)
-		log.Debug("Debug Started")
-	}
+func renderCard(card card) string {
+	return fmt.Sprintf("[%s:%2d]", card.suit, card.num)
+}
 
-	log.Info("Current log Level ", log.GetLevel())
+type updateHandMsg struct {
+	hand []card
+}
 
-	p := tea.NewProgram(newModel(time.Second*60), tea.WithAltScreen())
+func updateHand() tea.Msg {
+	newHand := handRequest()
 
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
+	return updateHandMsg{
+		hand: newHand,
 	}
 }

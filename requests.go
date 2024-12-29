@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -14,8 +15,25 @@ import (
 )
 
 var (
-	jar, _  = cookiejar.New(nil)
-	baseurl = "http://localhost:8000"
+	jar, _             = cookiejar.New(nil)
+	baseurl            = "http://localhost:8000"
+	CARD_NUMBER_INDEX  = 0
+	CARD_VALUE_INDEX   = 1
+	CARD_SCORE_INDEX   = 2
+	CARDS_WITHOUT_SKIP = [][]int{
+		{1, 12, 11},
+		{2, 1, 0},
+		{3, 11, 10},
+		{4, 2, 0},
+		{5, 3, 0},
+		{6, 4, 0},
+		{7, 5, 0},
+		{8, 6, 0},
+		{9, 7, 0},
+		{10, 8, 2},
+		{11, 9, 3},
+		{12, 10, 4},
+	}
 )
 
 type register struct {
@@ -92,6 +110,14 @@ func (wr waitingRoom) String() string {
 
 type gameId struct {
 	GameId string `json:"gameId"`
+}
+
+// Not JSON types
+type card struct {
+	suit  string
+	num   int
+	val   int
+	score int
 }
 
 func statusRequest() bool {
@@ -338,4 +364,79 @@ func joinGameRequest(gameId gameId) bool {
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
+}
+
+func handRequest() []card {
+	requestURL := fmt.Sprintf("%s/hand", baseurl)
+	var hand []card
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return hand
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
+		return hand
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return hand
+	}
+
+	var handStrings []string
+	json.Unmarshal([]byte(body.String()), &handStrings)
+
+	hand = handFromStrings(handStrings)
+
+	return hand
+}
+
+func handFromStrings(handStrings []string) []card {
+	var hand []card
+	for i := range len(handStrings) {
+		var card card
+
+		halves := strings.Split(handStrings[i], ":")
+		suitString := halves[0]
+		num, err := strconv.Atoi(halves[1])
+		if err != nil {
+			log.Error("Error parsing str to int for hand request.")
+			return hand
+		}
+		index := num - 1
+
+	suitSwitch:
+		switch suitString {
+		case "ORO":
+			card.suit = "🪙"
+			break suitSwitch
+		case "COPA":
+			card.suit = "🏆"
+			break suitSwitch
+		case "BASTO":
+			card.suit = "🪵"
+			break suitSwitch
+		case "ESPADA":
+			card.suit = "⚔️"
+			break suitSwitch
+		}
+
+		card.num = CARDS_WITHOUT_SKIP[index][CARD_NUMBER_INDEX]
+		card.val = CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX]
+		card.score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
+
+		hand = append(hand, card)
+	}
+	return hand
 }
