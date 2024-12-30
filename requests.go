@@ -112,6 +112,10 @@ type gameId struct {
 	GameId string `json:"gameId"`
 }
 
+type handIndex struct {
+	Index int `json:"index"`
+}
+
 // Not JSON types
 type card struct {
 	suit  string
@@ -439,4 +443,29 @@ func handFromStrings(handStrings []string) []card {
 		hand = append(hand, card)
 	}
 	return hand
+}
+
+func playCardRequest(index handIndex) bool {
+	payload, _ := json.Marshal(index)
+	reader := bytes.NewReader(payload)
+	requestURL := fmt.Sprintf("%s/playcard", baseurl)
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: %d\n", res.StatusCode)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return true
 }

@@ -100,6 +100,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "right":
 			m.selectedCard = (m.selectedCard + 1) % len(m.hand)
 			return m, nil
+		case "enter":
+			cmd = playCard(m.selectedCard)
+			cmds = append(cmds, cmd, updateHand)
+			return m, tea.Batch(cmds...)
 		}
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -215,5 +219,13 @@ func updateHand() tea.Msg {
 
 	return updateHandMsg{
 		hand: newHand,
+	}
+}
+
+func playCard(i int) tea.Cmd {
+	index := handIndex{Index: i}
+	return func() tea.Msg {
+		playCardRequest(index)
+		return nil
 	}
 }
