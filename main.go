@@ -173,6 +173,8 @@ func main() {
 
 	if os.Getenv("HELP_DEBUG") != "" {
 		log.SetLevel(log.DebugLevel)
+		log.Helper()
+		log.SetReportCaller(true)
 		log.Debug("Debug Started")
 	}
 
