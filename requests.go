@@ -461,11 +461,46 @@ func playCardRequest(index handIndex) bool {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
+		// log.Errorf("bad status making http request: %d\n", res.StatusCode)
 		return false
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
+}
+
+func actionsRequest() []action {
+	var actions []action
+	//	payload, _ := json.Marshal(from)
+	//	reader := bytes.NewReader(payload)
+	requestURL := fmt.Sprintf("%s/actions", baseurl)
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error("error making http request: ", err)
+		return actions
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: ", res.StatusCode)
+		return actions
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return actions
+	}
+
+	json.Unmarshal([]byte(body.String()), &actions)
+
+	return actions
 }

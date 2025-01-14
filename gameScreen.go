@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 )
 
 var (
@@ -49,6 +50,25 @@ type box struct {
 	style lipgloss.Style
 }
 
+type actionCache struct {
+	actions     []action
+	refreshTime time.Duration
+}
+
+type newActionCacheMsg actionCache
+
+func (ac actionCache) Refresh() tea.Cmd {
+	return tea.Every(ac.refreshTime, func(t time.Time) tea.Msg {
+		fetched := actionsRequest()
+		if len(fetched) != 0 {
+			log.Debug("Actions fetched: ", "fetched", fetched)
+		}
+		ac.actions = append(ac.actions, fetched...)
+		// log.Debug("Actions after fetch: ", "ac.actions", ac.actions)
+		return newActionCacheMsg(ac)
+	})
+}
+
 type gsModel struct {
 	timer        timer.Model
 	spinner      spinner.Model
@@ -56,6 +76,7 @@ type gsModel struct {
 	boxes        [3][3]box
 	hand         []card
 	selectedCard int
+	actionCache  actionCache
 }
 
 func newGSModel(timeout time.Duration) gsModel {
@@ -72,12 +93,16 @@ func newGSModel(timeout time.Duration) gsModel {
 	}
 	m.boxes = boxes
 	m.selectedCard = 0
+	m.actionCache = actionCache{
+		actions:     []action{},
+		refreshTime: time.Millisecond * 200,
+	}
 	return m
 }
 
 func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
-	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize())
+	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize(), m.actionCache.Refresh())
 }
 
 func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -88,6 +113,9 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return msg.model, nil
 	case tea.WindowSizeMsg:
 		return m.updateWindow(msg)
+	case newActionCacheMsg:
+		m.actionCache = actionCache(msg)
+		return m, m.actionCache.Refresh()
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
