@@ -18,7 +18,12 @@ import (
 // 	GAME_WON
 // }
 
-type gameConfigPayload gameConfig
+type gameConfigPayload struct {
+	GameId         string `json:"gameId"`
+	GameType       string `json:"gameType"`
+	MaxPlayers     int    `json:"maxPlayers"`
+	SwapBottomCard bool   `json:"swapBottomCard"`
+}
 
 type gameStartedPayload struct {
 	Seats        []seat `json:"seats"`
