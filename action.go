@@ -9,7 +9,6 @@ import (
 // enum ActionType {
 // 	GAME_CONFIG,
 // 	GAME_STARTED,
-// 	FIRST_PLAYER_SELECTED,
 // 	BOTTOM_CARD_SELECTED,
 // 	GRACE_PERIOD_ENDED,
 // 	SWAP_BOTTOM_CARD,
@@ -22,16 +21,13 @@ import (
 type gameConfigPayload gameConfig
 
 type gameStartedPayload struct {
-	Seats []seat `json:"seats"`
+	Seats        []seat `json:"seats"`
+	StartingSeat int    `json:"startingSeat"`
 }
 
 type seat struct {
 	Seat     int    `json:"seat"`
 	Username string `json:"username"`
-}
-
-type firstPlayerSelectedPayload struct {
-	Seat int `json:"seat"`
 }
 
 type bottomCardSelectedPayload struct {
@@ -87,13 +83,6 @@ func (a *action) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		a.Payload = gameStarted
-	case "FIRST_PLAYER_SELECTED":
-		playerSelected := &firstPlayerSelectedPayload{}
-		err := json.Unmarshal(b, playerSelected)
-		if err != nil {
-			return err
-		}
-		a.Payload = playerSelected
 	case "BOTTOM_CARD_SELECTED":
 		bottomCard := &bottomCardSelectedPayload{}
 		err := json.Unmarshal(b, bottomCard)
