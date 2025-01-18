@@ -15,25 +15,8 @@ import (
 )
 
 var (
-	jar, _             = cookiejar.New(nil)
-	baseurl            = "http://localhost:8000"
-	CARD_NUMBER_INDEX  = 0
-	CARD_VALUE_INDEX   = 1
-	CARD_SCORE_INDEX   = 2
-	CARDS_WITHOUT_SKIP = [][]int{
-		{1, 12, 11},
-		{2, 1, 0},
-		{3, 11, 10},
-		{4, 2, 0},
-		{5, 3, 0},
-		{6, 4, 0},
-		{7, 5, 0},
-		{8, 6, 0},
-		{9, 7, 0},
-		{10, 8, 2},
-		{11, 9, 3},
-		{12, 10, 4},
-	}
+	jar, _  = cookiejar.New(nil)
+	baseurl = "http://localhost:8000"
 )
 
 type register struct {
@@ -114,14 +97,6 @@ type gameId struct {
 
 type handIndex struct {
 	Index int `json:"index"`
-}
-
-// Not JSON types
-type card struct {
-	suit  string
-	num   int
-	val   int
-	score int
 }
 
 func statusRequest() bool {
@@ -409,7 +384,6 @@ func handRequest() []card {
 func handFromStrings(handStrings []string) []card {
 	var hand []card
 	for i := range len(handStrings) {
-		var card card
 
 		halves := strings.Split(handStrings[i], ":")
 		suitString := halves[0]
@@ -418,29 +392,8 @@ func handFromStrings(handStrings []string) []card {
 			log.Error("Error parsing str to int for hand request.")
 			return hand
 		}
-		index := num - 1
 
-	suitSwitch:
-		switch suitString {
-		case "ORO":
-			card.suit = "🪙"
-			break suitSwitch
-		case "COPA":
-			card.suit = "🏆"
-			break suitSwitch
-		case "BASTO":
-			card.suit = "🪵"
-			break suitSwitch
-		case "ESPADA":
-			card.suit = "⚔️"
-			break suitSwitch
-		}
-
-		card.num = CARDS_WITHOUT_SKIP[index][CARD_NUMBER_INDEX]
-		card.val = CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX]
-		card.score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
-
-		hand = append(hand, card)
+		hand = append(hand, newCard(suitString, num))
 	}
 	return hand
 }
