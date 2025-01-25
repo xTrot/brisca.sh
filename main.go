@@ -163,7 +163,14 @@ func registerView(m mainModel) string {
 
 func main() {
 
-	f, err := tea.LogToFile("debug.log", "help")
+	logFile := "debug.log"
+	envLogFile := os.Getenv("LOG_FILE")
+
+	if envLogFile != "" {
+		logFile = envLogFile
+	}
+
+	f, err := tea.LogToFile(logFile, "help")
 	if err != nil {
 		fmt.Println("Couldn't open a file for logging:", err)
 		os.Exit(1)

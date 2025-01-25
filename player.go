@@ -10,37 +10,56 @@ type playerModel struct {
 	name      string
 	score     int
 	scorePile []card
+	handSize  int
 }
 
-func newplayerModel() playerModel {
+func (pm playerModel) UpdateScore() int {
+	pileSize := len(pm.scorePile)
+	score := 0
+	for i := 0; i < pileSize; i++ {
+		score += pm.scorePile[i].score
+	}
+	return score
+}
+
+func newPlayerModelFromSeat(s seat) playerModel {
+	return playerModel{
+		name:      s.Username,
+		score:     0,
+		scorePile: []card{},
+		handSize:  3,
+	}
+}
+
+func newPlayerModel() playerModel {
 	return playerModel{
 		name:  "Username",
 		score: 0,
 		scorePile: []card{
-			newCard("ESPADA", 3),
-			newCard("BASTO", 2),
-			newCard("COPA", 6),
-			newCard("COPA", 7),
-			newCard("ESPADA", 3),
-			newCard("BASTO", 2),
-			newCard("COPA", 6),
-			newCard("COPA", 7),
-			newCard("ESPADA", 3),
-			newCard("BASTO", 2),
-			newCard("COPA", 6),
-			newCard("COPA", 7),
-			newCard("ESPADA", 3),
-			newCard("BASTO", 2),
-			newCard("COPA", 6),
-			newCard("COPA", 7),
-			newCard("ESPADA", 3),
-			newCard("BASTO", 2),
-			newCard("COPA", 6),
-			newCard("COPA", 7),
-			newCard("ESPADA", 3),
-			newCard("BASTO", 2),
-			newCard("COPA", 6),
-			newCard("COPA", 7),
+			newCard("ESPADA:3"),
+			newCard("BASTO:2"),
+			newCard("COPA:6"),
+			newCard("COPA:7"),
+			newCard("ESPADA:3"),
+			newCard("BASTO:2"),
+			newCard("COPA:6"),
+			newCard("COPA:7"),
+			newCard("ESPADA:3"),
+			newCard("BASTO:2"),
+			newCard("COPA:6"),
+			newCard("COPA:7"),
+			newCard("ESPADA:3"),
+			newCard("BASTO:2"),
+			newCard("COPA:6"),
+			newCard("COPA:7"),
+			newCard("ESPADA:3"),
+			newCard("BASTO:2"),
+			newCard("COPA:6"),
+			newCard("COPA:7"),
+			newCard("ESPADA:3"),
+			newCard("BASTO:2"),
+			newCard("COPA:6"),
+			newCard("COPA:7"),
 		},
 	}
 }
@@ -64,6 +83,7 @@ func (pm playerModel) renderScorePile() string {
 	maxSP := maxRows * maxCols
 	spString := ""
 	spSize := len(pm.scorePile)
+	reverseStart := spSize - 1
 rowLoop:
 	for i := 0; i < maxRows; i++ {
 		indexBase := maxCols * i
@@ -72,11 +92,13 @@ rowLoop:
 			if !(index < spSize) {
 				break rowLoop // Breaks out of both loops
 			}
-			spString += renderCard(pm.scorePile[index])
+			spString += renderCard(pm.scorePile[reverseStart-index])
 		}
 		spString += "\n  " // spacing
 	}
-	if spSize > maxSP {
+	if spSize == maxSP {
+		spString = spString[:len(spString)-3] // remove last spacing
+	} else if spSize > maxSP {
 		spString = spString[:len(spString)-3] // remove last spacing
 		spString += " ..."
 	}

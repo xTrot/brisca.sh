@@ -1,5 +1,12 @@
 package main
 
+import (
+	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/log"
+)
+
 var (
 	CARD_NUMBER_INDEX  = 0
 	CARD_VALUE_INDEX   = 1
@@ -27,10 +34,18 @@ type card struct {
 	score int
 }
 
-func newCard(suitString string, cardNum int) card {
+func newCard(cardString string) card {
 	var card card
 
-	index := cardNum - 1
+	halves := strings.Split(cardString, ":")
+	suitString := halves[0]
+	num, err := strconv.Atoi(halves[1])
+	if err != nil {
+		log.Error("Error parsing str to int for hand request.")
+		return card
+	}
+
+	index := num - 1
 
 	switch suitString {
 	case "ORO":
@@ -48,4 +63,16 @@ func newCard(suitString string, cardNum int) card {
 	card.score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
 
 	return card
+}
+
+func newBottomCard(c card) card {
+	// only a 2 of the same suit could do this
+	swapNum := 2
+	index := swapNum - 1
+	return card{
+		suit:  c.suit,
+		num:   swapNum,
+		val:   CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX],
+		score: CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX],
+	}
 }

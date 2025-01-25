@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -384,16 +383,7 @@ func handRequest() []card {
 func handFromStrings(handStrings []string) []card {
 	var hand []card
 	for i := range len(handStrings) {
-
-		halves := strings.Split(handStrings[i], ":")
-		suitString := halves[0]
-		num, err := strconv.Atoi(halves[1])
-		if err != nil {
-			log.Error("Error parsing str to int for hand request.")
-			return hand
-		}
-
-		hand = append(hand, newCard(suitString, num))
+		hand = append(hand, newCard(handStrings[i]))
 	}
 	return hand
 }
@@ -425,8 +415,6 @@ func playCardRequest(index handIndex) bool {
 
 func actionsRequest() []action {
 	var actions []action
-	//	payload, _ := json.Marshal(from)
-	//	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/actions", baseurl)
 
 	client := &http.Client{

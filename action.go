@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
 )
 
@@ -35,8 +38,13 @@ type seat struct {
 	Username string `json:"username"`
 }
 
+type gracePeriodEndedPayload struct{}
+
+type swapBottomCardPayload struct{}
+
 type bottomCardSelectedPayload struct {
 	BottomCard string `json:"bottomCard"`
+	bottomCard card
 }
 
 type cardDrawnPayload struct {
@@ -47,6 +55,7 @@ type cardPlayedPayload struct {
 	Seat  int    `json:"seat"`
 	Index int    `json:"index"`
 	Card  string `json:"card"`
+	card  card
 }
 
 type turnWonPayload struct {
@@ -65,64 +74,122 @@ type action struct {
 
 type Payload interface{}
 
-type innerAction action
+type innerAction struct {
+	Type    string                 `json:"type"`
+	Payload map[string]interface{} `json:"payload"`
+}
+
+func (a action) processAction() tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(time.Millisecond * 1000)
+		return a.Payload
+	}
+}
+
+func (a action) String() string {
+	return fmt.Sprintf("{Type:%s Payload:%s}", a.Type, a.Payload)
+}
+
+func findOcurrence(bytes []byte, char byte, ocurrence int, dir int) int {
+	found := -1
+
+	startingFrom := -1
+	if dir == 1 {
+		startingFrom = 0
+		max := len(bytes)
+		for i := ocurrence; i > 0; i-- {
+			for j := startingFrom; j < max; j++ {
+				if char == bytes[j] {
+					found = j
+					startingFrom = j + 1
+					break
+				}
+			}
+		}
+	} else if dir == -1 {
+		startingFrom = len(bytes) - 1
+		for i := ocurrence; i > 0; i-- {
+			for j := startingFrom; j >= 0; j-- {
+				if char == bytes[j] {
+					found = j + 1
+					startingFrom = j - 1
+					break
+				}
+			}
+		}
+	} else {
+		return -1
+	}
+
+	return found
+}
 
 func (a *action) UnmarshalJSON(b []byte) error {
-	err := json.Unmarshal(b, (*innerAction)(a))
+	var ia innerAction
+	err := json.Unmarshal(b, &ia)
 	if err != nil {
 		return err
 	}
 
+	a.Type = ia.Type
+	a.Payload = ia.Payload
+
+	to := findOcurrence(b, '{', 2, 1)
+	from := findOcurrence(b, '}', 2, -1)
+	payloadBytes := b[to:from]
+
 	switch a.Type {
 	case "GAME_CONFIG":
-		gameConfig := &gameConfigPayload{}
-		err := json.Unmarshal(b, gameConfig)
+		gameConfig := gameConfigPayload{}
+		err := json.Unmarshal(payloadBytes, &gameConfig)
 		if err != nil {
 			return err
 		}
 		a.Payload = gameConfig
 	case "GAME_STARTED":
-		gameStarted := &gameStartedPayload{}
-		err := json.Unmarshal(b, gameStarted)
+		gameStarted := gameStartedPayload{}
+		err := json.Unmarshal(payloadBytes, &gameStarted)
 		if err != nil {
 			return err
 		}
 		a.Payload = gameStarted
 	case "BOTTOM_CARD_SELECTED":
-		bottomCard := &bottomCardSelectedPayload{}
-		err := json.Unmarshal(b, bottomCard)
+		bottomCard := bottomCardSelectedPayload{}
+		err := json.Unmarshal(payloadBytes, &bottomCard)
 		if err != nil {
 			return err
 		}
+		bottomCard.bottomCard = newCard(bottomCard.BottomCard)
 		a.Payload = bottomCard
 	case "GRACE_PERIOD_ENDED":
-		a.Payload = nil
+		a.Payload = gracePeriodEndedPayload{}
 	case "SWAP_BOTTOM_CARD":
-		a.Payload = nil
+		a.Payload = swapBottomCardPayload{}
 	case "CARD_DRAWN":
-		cardDrawn := &cardDrawnPayload{}
-		err := json.Unmarshal(b, cardDrawn)
+		cardDrawn := cardDrawnPayload{}
+		err := json.Unmarshal(payloadBytes, &cardDrawn)
 		if err != nil {
 			return err
 		}
 		a.Payload = cardDrawn
 	case "CARD_PLAYED":
-		cardPlayed := &cardPlayedPayload{}
-		err := json.Unmarshal(b, cardPlayed)
+		cardPlayed := cardPlayedPayload{}
+		err := json.Unmarshal(payloadBytes, &cardPlayed)
 		if err != nil {
 			return err
 		}
+		cardPlayed.card = newCard(cardPlayed.Card)
 		a.Payload = cardPlayed
 	case "TURN_WON":
-		turnWon := &turnWonPayload{}
-		err := json.Unmarshal(b, turnWon)
+		turnWon := turnWonPayload{}
+		err := json.Unmarshal(payloadBytes, &turnWon)
 		if err != nil {
 			return err
 		}
 		a.Payload = turnWon
 	case "GAME_WON":
-		gameWon := &gameWonPayload{}
-		err := json.Unmarshal(b, gameWon)
+		gameWon := gameWonPayload{}
+		err := json.Unmarshal(payloadBytes, &gameWon)
 		if err != nil {
 			return err
 		}

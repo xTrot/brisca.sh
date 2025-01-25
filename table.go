@@ -15,11 +15,11 @@ type tableModel struct {
 func newTableModel() tableModel {
 	return tableModel{
 		deckSize: 40,
-		suitCard: newCard("BASTO", 3),
+		suitCard: newCard("BASTO:3"),
 		cardsInPlay: []card{
-			newCard("ESPADA", 1),
-			newCard("ORO", 5),
-			newCard("COPA", 10),
+			newCard("ESPADA:1"),
+			newCard("ORO:5"),
+			newCard("COPA:10"),
 		},
 	}
 }

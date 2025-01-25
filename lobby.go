@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 const (
@@ -198,7 +197,6 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 
 	diff := currentTime.Sub(lm.lastUpdate)
 	if diff >= (time.Second * time.Duration(stale)) {
-		log.Debug("Stale Lobby ", diff)
 		cmd := lm.list.StartSpinner()
 
 		return lm, tea.Batch(cmd, func() tea.Msg {

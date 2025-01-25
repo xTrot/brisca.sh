@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"reflect"
+	"slices"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -53,20 +55,30 @@ type box struct {
 type actionCache struct {
 	actions     []action
 	refreshTime time.Duration
+	processed   int
 }
 
 type newActionCacheMsg actionCache
 
-func (ac actionCache) Refresh() tea.Cmd {
+func (ac *actionCache) Refresh() tea.Cmd {
 	return tea.Every(ac.refreshTime, func(t time.Time) tea.Msg {
 		fetched := actionsRequest()
 		if len(fetched) != 0 {
 			log.Debug("Actions fetched: ", "fetched", fetched)
 		}
 		ac.actions = append(ac.actions, fetched...)
-		// log.Debug("Actions after fetch: ", "ac.actions", ac.actions)
-		return newActionCacheMsg(ac)
+		return newActionCacheMsg(*ac)
 	})
+}
+
+func (ac *actionCache) ProcessAction() tea.Cmd {
+	if ac.processed < len(ac.actions) {
+		cmd := ac.actions[ac.processed].processAction()
+		ac.processed++
+		return cmd
+	} else {
+		return nil
+	}
 }
 
 type gsModel struct {
@@ -77,6 +89,11 @@ type gsModel struct {
 	hand         []card
 	selectedCard int
 	actionCache  actionCache
+	playerSeats  []playerModel
+	table        tableModel
+	gameConfig   gameConfigPayload
+	turn         int
+	won          gameWonPayload
 }
 
 func newGSModel(timeout time.Duration) gsModel {
@@ -96,7 +113,15 @@ func newGSModel(timeout time.Duration) gsModel {
 	m.actionCache = actionCache{
 		actions:     []action{},
 		refreshTime: time.Millisecond * 200,
+		processed:   0,
 	}
+	m.playerSeats = []playerModel{
+		newPlayerModel(),
+		newPlayerModel(),
+		newPlayerModel(),
+		newPlayerModel(),
+	}
+	m.table = newTableModel()
 	return m
 }
 
@@ -115,7 +140,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateWindow(msg)
 	case newActionCacheMsg:
 		m.actionCache = actionCache(msg)
-		return m, m.actionCache.Refresh()
+		cmd = m.actionCache.Refresh()
+		cmds = append(cmds, cmd)
+		cmd = m.actionCache.ProcessAction()
+		cmds = append(cmds, cmd)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -133,6 +161,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd, updateHand)
 			return m, tea.Batch(cmds...)
 		}
+
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
@@ -141,8 +170,60 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd, updateHand)
 	case updateHandMsg:
 		m.hand = msg.hand
+
+	case gameConfigPayload:
+		m.gameConfig = msg
+	case gameStartedPayload:
+		m.turn = msg.StartingSeat
+		// Each player draws 3 cards
+		m.table.deckSize -= len(msg.Seats) * 3
+		m.table.cardsInPlay = []card{}
+		log.Debug("case gameStartedPayload:", "m.table", m.table)
+		cmd = processSeats(msg.Seats)
+		cmds = append(cmds, cmd)
+	case bottomCardSelectedPayload:
+		m.table.suitCard = msg.bottomCard
+		log.Debug("case bottomCardSelectedPayload:", "m.table", m.table)
+	case gracePeriodEndedPayload:
+	case swapBottomCardPayload:
+		m.table.suitCard = newBottomCard(m.table.suitCard)
+		log.Debug("case swapBottomCardPayload:", "m.table", m.table)
+	case cardDrawnPayload:
+		m.table.deckSize--
+		log.Debug("case cardDrawnPayload:", "m.table", m.table)
+		m.playerSeats[msg.Seat].handSize++
+	case cardPlayedPayload:
+		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
+		log.Debug("case cardPlayedPayload:", "m.table", m.table)
+		m.playerSeats[msg.Seat].handSize--
+		m.turn = (m.turn + 1) % m.gameConfig.MaxPlayers
+	case turnWonPayload:
+		slices.Reverse(m.table.cardsInPlay)
+		m.playerSeats[msg.Seat].scorePile = append(m.playerSeats[msg.Seat].scorePile, m.table.cardsInPlay...)
+		m.playerSeats[msg.Seat].score = m.playerSeats[msg.Seat].UpdateScore()
+		m.table.cardsInPlay = []card{}
+		m.turn = msg.Seat
+	case gameWonPayload:
+		m.won = msg
+
+	case seatsMsg:
+		m.playerSeats = msg
+	default:
+		log.Debug("default:", "msg", msg, "msg.(type)", reflect.TypeOf(msg))
 	}
 	return m, tea.Batch(cmds...)
+}
+
+type seatsMsg []playerModel
+
+func processSeats(seats []seat) tea.Cmd {
+	return func() tea.Msg {
+		var seatsMsg seatsMsg
+		for i := 0; i < len(seats); i++ {
+			seatsMsg = append(seatsMsg, newPlayerModelFromSeat(seats[i]))
+		}
+		return seatsMsg
+	}
 }
 
 type resizeMsg struct {
@@ -166,6 +247,7 @@ func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 
 		// Blank Top Right
 		m.boxes[0][2].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
+
 		// Second Player(4)
 		m.boxes[1][0].style = emptyBoxStyle.Width(thirdWidth).Height(midHeight)
 
@@ -173,7 +255,7 @@ func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 		m.boxes[1][1].style = tableBoxStyle.Width(midWidth).Height(midHeight)
 
 		// Last Player(3,4)
-		m.boxes[1][2].style = playerBoxStyle.Width(thirdWidth).Height(midHeight)
+		m.boxes[1][2].style = emptyBoxStyle.Width(thirdWidth).Height(midHeight)
 
 		// Blank Bottom Left
 		m.boxes[2][0].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
@@ -190,13 +272,13 @@ func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 
 func (m gsModel) View() string {
 	var s string
-	m.boxes[0][1].view = "Player2 Score: 10\n  Score Pile:\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7] ..."
+	m.boxes[0][1].view = m.playerSeats[1].View()
 	// m.boxes[0][2].view =
 	// m.boxes[1][0].view =
-	m.boxes[1][1].view = "Table:\n  Deck: 40\n  Suit Card: [🪵: 3]\n\n  In Play:\n  [⚔️: 1] [🪙: 5] [🏆:10]"
-	m.boxes[1][2].view = "1234512345123451234512345 Score: 10\n  Score Pile:\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7] ..."
+	m.boxes[1][1].view = m.table.View()
+	// m.boxes[1][2].view =
 	// m.boxes[2][0].view =
-	m.boxes[2][1].view = "xTrot Score: 10\n  Score Pile:\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7]\n  [⚔️: 3] [🪵: 2] [🏆: 6] [🏆: 7] ..."
+	m.boxes[2][1].view = m.playerSeats[0].View()
 	// m.boxes[2][2].view =
 	for i := 0; i < len(m.boxes); i++ {
 		row := lipgloss.JoinHorizontal(lipgloss.Top,
