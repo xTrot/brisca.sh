@@ -6,11 +6,31 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+var (
+	SEAT_BASED_BOXES_2P = [][]int{
+		{2, 1},
+		{0, 1},
+	}
+	SEAT_BASED_BOXES_3P = [][]int{
+		{2, 1},
+		{0, 1},
+		{1, 2},
+	}
+	SEAT_BASED_BOXES_4P = [][]int{
+		{2, 1},
+		{1, 0},
+		{0, 1},
+		{1, 2},
+	}
+)
+
 type playerModel struct {
 	name      string
 	score     int
 	scorePile []card
 	handSize  int
+	boxX      int
+	boxY      int
 }
 
 func (pm playerModel) UpdateScore() int {

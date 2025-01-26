@@ -69,6 +69,10 @@ type newGame struct {
 	GameId string `json:"gameId"`
 }
 
+type mySeat struct {
+	Seat int `json:"seat"`
+}
+
 func (wr waitingRoom) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("fill:")
@@ -444,4 +448,37 @@ func actionsRequest() []action {
 	json.Unmarshal([]byte(body.String()), &actions)
 
 	return actions
+}
+
+func mySeatRequest() mySeat {
+	var seat mySeat
+	requestURL := fmt.Sprintf("%s/seat", baseurl)
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error("error making http request: ", err)
+		return seat
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: ", res.StatusCode)
+		return seat
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return seat
+	}
+
+	json.Unmarshal([]byte(body.String()), &seat)
+
+	return seat
 }

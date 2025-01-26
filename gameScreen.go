@@ -32,12 +32,11 @@ var (
 	tableBoxStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("82"))
+	inactiveColor  = lipgloss.Color("240")
+	activeColor    = lipgloss.Color("69")
 	playerBoxStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240"))
-	activePlayerBoxStyle = lipgloss.NewStyle().
-				BorderStyle(lipgloss.NormalBorder()).
-				BorderForeground(lipgloss.Color("69"))
+			BorderForeground(inactiveColor)
 	gsHelpStyle = lipgloss.NewStyle().
 			Align(lipgloss.Center, lipgloss.Center).
 			Foreground(lipgloss.Color("241"))
@@ -94,6 +93,7 @@ type gsModel struct {
 	gameConfig   gameConfigPayload
 	turn         int
 	won          gameWonPayload
+	mySeat       int
 }
 
 func newGSModel(timeout time.Duration) gsModel {
@@ -109,6 +109,15 @@ func newGSModel(timeout time.Duration) gsModel {
 		}
 	}
 	m.boxes = boxes
+	m.boxes[0][0].style = emptyBoxStyle
+	m.boxes[0][1].style = playerBoxStyle
+	m.boxes[0][2].style = emptyBoxStyle
+	m.boxes[1][0].style = emptyBoxStyle
+	m.boxes[1][1].style = tableBoxStyle
+	m.boxes[1][2].style = emptyBoxStyle
+	m.boxes[2][0].style = emptyBoxStyle
+	m.boxes[2][1].style = playerBoxStyle
+	m.boxes[2][2].style = emptyBoxStyle
 	m.selectedCard = 0
 	m.actionCache = actionCache{
 		actions:     []action{},
@@ -127,7 +136,16 @@ func newGSModel(timeout time.Duration) gsModel {
 
 func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
-	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize(), m.actionCache.Refresh())
+	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize(),
+		tea.Sequence(
+			m.getMySeat(), m.actionCache.Refresh())) // These have to be serial for processSeats to work.
+}
+
+func (m gsModel) getMySeat() tea.Cmd {
+	return func() tea.Msg {
+		mySeat := mySeatRequest()
+		return mySeat
+	}
 }
 
 func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -179,7 +197,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.deckSize -= len(msg.Seats) * 3
 		m.table.cardsInPlay = []card{}
 		log.Debug("case gameStartedPayload:", "m.table", m.table)
-		cmd = processSeats(msg.Seats)
+		cmd = m.processSeats(msg.Seats)
 		cmds = append(cmds, cmd)
 	case bottomCardSelectedPayload:
 		m.table.suitCard = msg.bottomCard
@@ -208,6 +226,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case seatsMsg:
 		m.playerSeats = msg
+	case mySeat:
+		m.mySeat = msg.Seat
 	default:
 		log.Debug("default:", "msg", msg, "msg.(type)", reflect.TypeOf(msg))
 	}
@@ -216,11 +236,25 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 type seatsMsg []playerModel
 
-func processSeats(seats []seat) tea.Cmd {
+func (m gsModel) processSeats(seats []seat) tea.Cmd {
 	return func() tea.Msg {
 		var seatsMsg seatsMsg
 		for i := 0; i < len(seats); i++ {
-			seatsMsg = append(seatsMsg, newPlayerModelFromSeat(seats[i]))
+			player := newPlayerModelFromSeat(seats[i])
+			// This part only works because case mySeat: happens first (forced by gsModel.Init)
+			adjustedSeat := (i + m.mySeat) % m.gameConfig.MaxPlayers
+			if m.gameConfig.MaxPlayers == 2 {
+				player.boxX = SEAT_BASED_BOXES_2P[adjustedSeat][0]
+				player.boxY = SEAT_BASED_BOXES_2P[adjustedSeat][1]
+			} else if m.gameConfig.MaxPlayers == 3 {
+				player.boxX = SEAT_BASED_BOXES_3P[adjustedSeat][0]
+				player.boxY = SEAT_BASED_BOXES_3P[adjustedSeat][1]
+			} else if m.gameConfig.MaxPlayers == 4 {
+				player.boxX = SEAT_BASED_BOXES_4P[adjustedSeat][0]
+				player.boxY = SEAT_BASED_BOXES_4P[adjustedSeat][1]
+			}
+			// This part end
+			seatsMsg = append(seatsMsg, player)
 		}
 		return seatsMsg
 	}
@@ -240,31 +274,31 @@ func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 		midHeight := wholeHeight - (2 * thirdHeight)
 
 		// Blank Top Left
-		m.boxes[0][0].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
+		m.boxes[0][0].style = m.boxes[0][0].style.Width(thirdWidth).Height(thirdHeight)
 
 		// Second Player(2,3), Third Player(4)
-		m.boxes[0][1].style = playerBoxStyle.Width(midWidth).Height(thirdHeight)
+		m.boxes[0][1].style = m.boxes[0][1].style.Width(midWidth).Height(thirdHeight)
 
 		// Blank Top Right
-		m.boxes[0][2].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
+		m.boxes[0][2].style = m.boxes[0][2].style.Width(thirdWidth).Height(thirdHeight)
 
 		// Second Player(4)
-		m.boxes[1][0].style = emptyBoxStyle.Width(thirdWidth).Height(midHeight)
+		m.boxes[1][0].style = m.boxes[1][0].style.Width(thirdWidth).Height(midHeight)
 
 		// Table
-		m.boxes[1][1].style = tableBoxStyle.Width(midWidth).Height(midHeight)
+		m.boxes[1][1].style = m.boxes[1][1].style.Width(midWidth).Height(midHeight)
 
 		// Last Player(3,4)
-		m.boxes[1][2].style = emptyBoxStyle.Width(thirdWidth).Height(midHeight)
+		m.boxes[1][2].style = m.boxes[1][2].style.Width(thirdWidth).Height(midHeight)
 
 		// Blank Bottom Left
-		m.boxes[2][0].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
+		m.boxes[2][0].style = m.boxes[2][0].style.Width(thirdWidth).Height(thirdHeight)
 
 		// This player
-		m.boxes[2][1].style = activePlayerBoxStyle.Width(midWidth).Height(thirdHeight)
+		m.boxes[2][1].style = m.boxes[2][1].style.Width(midWidth).Height(thirdHeight)
 
 		// Blank Bottom Right
-		m.boxes[2][2].style = emptyBoxStyle.Width(thirdWidth).Height(thirdHeight)
+		m.boxes[2][2].style = m.boxes[2][2].style.Width(thirdWidth).Height(thirdHeight)
 
 		return resizeMsg{model: m}
 	}
@@ -272,14 +306,22 @@ func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 
 func (m gsModel) View() string {
 	var s string
-	m.boxes[0][1].view = m.playerSeats[1].View()
-	// m.boxes[0][2].view =
-	// m.boxes[1][0].view =
+
 	m.boxes[1][1].view = m.table.View()
-	// m.boxes[1][2].view =
-	// m.boxes[2][0].view =
-	m.boxes[2][1].view = m.playerSeats[0].View()
-	// m.boxes[2][2].view =
+
+	for i := 0; i < m.gameConfig.MaxPlayers; i++ {
+		x := m.playerSeats[i].boxX
+		y := m.playerSeats[i].boxY
+		m.boxes[x][y].view = m.playerSeats[i].View()
+		if m.turn == i {
+			m.boxes[x][y].style = m.boxes[x][y].style.
+				BorderForeground(activeColor)
+		} else {
+			m.boxes[x][y].style = m.boxes[x][y].style.
+				BorderForeground(inactiveColor)
+		}
+	}
+
 	for i := 0; i < len(m.boxes); i++ {
 		row := lipgloss.JoinHorizontal(lipgloss.Top,
 			m.boxes[i][0].style.Render(m.boxes[i][0].view),
