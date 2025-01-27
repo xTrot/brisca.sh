@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"slices"
 	"time"
 
@@ -201,23 +200,18 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Each player draws 3 cards
 		m.table.deckSize -= len(msg.Seats) * 3
 		m.table.cardsInPlay = []card{}
-		log.Debug("case gameStartedPayload:", "m.table", m.table)
 		cmd = m.processSeats(msg.Seats)
 		cmds = append(cmds, cmd)
 	case bottomCardSelectedPayload:
 		m.table.suitCard = msg.bottomCard
-		log.Debug("case bottomCardSelectedPayload:", "m.table", m.table)
 	case gracePeriodEndedPayload:
 	case swapBottomCardPayload:
 		m.table.suitCard = newBottomCard(m.table.suitCard)
-		log.Debug("case swapBottomCardPayload:", "m.table", m.table)
 	case cardDrawnPayload:
 		m.table.deckSize--
-		log.Debug("case cardDrawnPayload:", "m.table", m.table)
 		m.playerSeats[msg.Seat].handSize++
 	case cardPlayedPayload:
 		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
-		log.Debug("case cardPlayedPayload:", "m.table", m.table)
 		m.playerSeats[msg.Seat].handSize--
 		m.turn = (m.turn + 1) % m.gameConfig.MaxPlayers
 	case turnWonPayload:
@@ -235,10 +229,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mySeat = msg.Seat
 		cmd := m.actionCache.Refresh()
 		cmds = append(cmds, cmd)
-		log.Debug("case mySeat:", "m.mySeat", m.mySeat)
-	default:
-		log.Debug("default:", "msg", msg, "msg.(type)", reflect.TypeOf(msg))
 	}
+
 	return m, tea.Batch(cmds...)
 }
 

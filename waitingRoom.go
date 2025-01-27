@@ -9,10 +9,15 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 const (
 	wrUpdateInterval = time.Duration(time.Millisecond * 200)
+)
+
+var (
+	wrDocStyle = lipgloss.NewStyle().Margin(1, 2)
 )
 
 type wrKeyMap struct {
@@ -48,9 +53,11 @@ func newWaitingRoom() waitingRoomModel {
 	var (
 		listKeys = newWrKeyMap()
 	)
+	d := list.NewDefaultDelegate()
+	d.ShowDescription = false
 	wrm := waitingRoomModel{
 		wr:   waitingRoom{},
-		list: list.New([]list.Item{}, list.DefaultDelegate{}, 0, 0),
+		list: list.New([]list.Item{}, d, 0, 0),
 		keys: listKeys,
 	}
 

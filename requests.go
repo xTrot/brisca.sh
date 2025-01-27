@@ -48,7 +48,7 @@ type player struct {
 }
 
 func (p player) Title() string       { return p.Name + ": " + p.ready() }
-func (p player) Description() string { return p.Team }
+func (p player) Description() string { return "Team: " + p.Team }
 func (p player) FilterValue() string { return p.Name }
 func (p player) ready() string {
 	if p.Ready {
