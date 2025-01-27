@@ -136,9 +136,7 @@ func newGSModel(timeout time.Duration) gsModel {
 
 func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
-	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize(),
-		tea.Sequence(
-			m.getMySeat(), m.actionCache.Refresh())) // These have to be serial for processSeats to work.
+	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize(), m.getMySeat()) // These have to be serial for processSeats to work.
 }
 
 func (m gsModel) getMySeat() tea.Cmd {
@@ -151,9 +149,15 @@ func (m gsModel) getMySeat() tea.Cmd {
 func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case resizeMsg:
-		return msg.model, nil
+		for i := 0; i < 3; i++ {
+			for j := 0; j < 3; j++ {
+				m.boxes[i][j].style = msg.boxes[i][j].style
+			}
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		return m.updateWindow(msg)
 	case newActionCacheMsg:
@@ -165,6 +169,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
+			leaveGameRequest()
 			return m, tea.Quit
 		case "left":
 			handSize := len(m.hand)
@@ -228,6 +233,9 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playerSeats = msg
 	case mySeat:
 		m.mySeat = msg.Seat
+		cmd := m.actionCache.Refresh()
+		cmds = append(cmds, cmd)
+		log.Debug("case mySeat:", "m.mySeat", m.mySeat)
 	default:
 		log.Debug("default:", "msg", msg, "msg.(type)", reflect.TypeOf(msg))
 	}
@@ -241,8 +249,9 @@ func (m gsModel) processSeats(seats []seat) tea.Cmd {
 		var seatsMsg seatsMsg
 		for i := 0; i < len(seats); i++ {
 			player := newPlayerModelFromSeat(seats[i])
-			// This part only works because case mySeat: happens first (forced by gsModel.Init)
+			// This part only works because case mySeat: happens first then seatsMsg
 			adjustedSeat := (i + m.mySeat) % m.gameConfig.MaxPlayers
+			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.mySeat, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
 			if m.gameConfig.MaxPlayers == 2 {
 				player.boxX = SEAT_BASED_BOXES_2P[adjustedSeat][0]
 				player.boxY = SEAT_BASED_BOXES_2P[adjustedSeat][1]
@@ -261,7 +270,7 @@ func (m gsModel) processSeats(seats []seat) tea.Cmd {
 }
 
 type resizeMsg struct {
-	model gsModel
+	boxes [3][3]box
 }
 
 func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
@@ -300,7 +309,7 @@ func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 		// Blank Bottom Right
 		m.boxes[2][2].style = m.boxes[2][2].style.Width(thirdWidth).Height(thirdHeight)
 
-		return resizeMsg{model: m}
+		return resizeMsg{boxes: m.boxes}
 	}
 }
 
