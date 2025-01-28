@@ -242,7 +242,7 @@ func (m gsModel) processSeats(seats []seat) tea.Cmd {
 		for i := 0; i < len(seats); i++ {
 			player := newPlayerModelFromSeat(seats[i])
 			// This part only works because case mySeat: happens first then seatsMsg
-			adjustedSeat := (i + m.mySeat) % m.gameConfig.MaxPlayers
+			adjustedSeat := (i - m.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
 			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.mySeat, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
 			if m.gameConfig.MaxPlayers == 2 {
 				player.boxX = SEAT_BASED_BOXES_2P[adjustedSeat][0]
