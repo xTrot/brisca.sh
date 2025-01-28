@@ -21,9 +21,11 @@ var (
 )
 
 type wrKeyMap struct {
-	ready key.Binding
-	start key.Binding
-	leave key.Binding
+	ready      key.Binding
+	start      key.Binding
+	changeTeam key.Binding
+	leave      key.Binding
+	spectate   key.Binding
 }
 
 func newWrKeyMap() *wrKeyMap {
@@ -36,36 +38,52 @@ func newWrKeyMap() *wrKeyMap {
 			key.WithKeys("s"),
 			key.WithHelp("s", "start"),
 		),
+		changeTeam: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "change team"),
+		),
 		leave: key.NewBinding(
 			key.WithKeys("l"),
 			key.WithHelp("l", "leave"),
+		),
+		spectate: key.NewBinding(
+			key.WithKeys("w"),
+			key.WithHelp("w", "spectate"),
 		),
 	}
 }
 
 type waitingRoomModel struct {
-	wr   waitingRoom
-	list list.Model
-	keys *wrKeyMap
+	wr             waitingRoom
+	list           list.Model
+	keys           *wrKeyMap
+	descDelegate   list.DefaultDelegate
+	noDescDelegate list.DefaultDelegate
 }
 
 func newWaitingRoom() waitingRoomModel {
 	var (
 		listKeys = newWrKeyMap()
 	)
-	d := list.NewDefaultDelegate()
-	d.ShowDescription = false
+	noDescDelegate := list.NewDefaultDelegate()
+	noDescDelegate.ShowDescription = false
+	descDelegate := list.NewDefaultDelegate()
+	descDelegate.ShowDescription = true
 	wrm := waitingRoomModel{
-		wr:   waitingRoom{},
-		list: list.New([]list.Item{}, d, 0, 0),
-		keys: listKeys,
+		wr:             waitingRoom{},
+		list:           list.New([]list.Item{}, noDescDelegate, 0, 0),
+		keys:           listKeys,
+		descDelegate:   descDelegate,
+		noDescDelegate: noDescDelegate,
 	}
 
 	wrm.list.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			listKeys.ready,
 			listKeys.start,
+			listKeys.changeTeam,
 			listKeys.leave,
+			listKeys.spectate,
 		}
 	}
 
@@ -73,6 +91,7 @@ func newWaitingRoom() waitingRoomModel {
 		return []key.Binding{
 			listKeys.ready,
 			listKeys.start,
+			listKeys.changeTeam,
 			listKeys.leave,
 		}
 	}
@@ -96,6 +115,9 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case updateWRMsg:
 		m.wr = msg.wr
 		cmd = m.list.SetItems(m.wr.items)
+		if m.wr.teams {
+			m.list.SetDelegate(m.descDelegate)
+		}
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, every(wrUpdateInterval))
 		if msg.wr.Started {
@@ -128,6 +150,14 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.start):
 			cmd = m.startGame()
+			cmds = append(cmds, cmd)
+
+		case key.Matches(msg, m.keys.spectate):
+			cmd = changeTeam(true)
+			cmds = append(cmds, cmd)
+
+		case key.Matches(msg, m.keys.changeTeam):
+			cmd = changeTeam(false)
 			cmds = append(cmds, cmd)
 
 		case key.Matches(msg, m.keys.leave):
@@ -198,5 +228,14 @@ func updateWaitingRoom(t time.Time) tea.Msg {
 
 	return updateWRMsg{
 		wr: newWR,
+	}
+}
+
+type changedTeamMsg bool
+
+func changeTeam(spectator bool) tea.Cmd {
+	return func() tea.Msg {
+		success := changedTeamMsg(changeTeamRequest(spectator))
+		return success
 	}
 }

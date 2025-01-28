@@ -63,6 +63,7 @@ type waitingRoom struct {
 	Fill    string   `json:"fill"`
 	Started bool     `json:"started"`
 	items   []list.Item
+	teams   bool
 }
 
 type newGame struct {
@@ -251,6 +252,10 @@ func waitingRoomRequest() waitingRoom {
 	}
 
 	waitingroom.items = items
+
+	if waitingroom.Fill[2] == '4' {
+		waitingroom.teams = true
+	}
 
 	return waitingroom
 }
@@ -481,4 +486,32 @@ func mySeatRequest() mySeat {
 	json.Unmarshal([]byte(body.String()), &seat)
 
 	return seat
+}
+
+func changeTeamRequest(spectator bool) bool {
+	reader := bytes.NewReader([]byte{})
+	if spectator {
+		reader = bytes.NewReader([]byte("{team:S}")) // Not worth implementing the JSON.
+	}
+
+	requestURL := fmt.Sprintf("%s/changeteam", baseurl)
+
+	client := &http.Client{
+		Jar: jar,
+	}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: %s\n", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		// log.Errorf("bad status making http request: %d\n", res.StatusCode)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return true
 }
