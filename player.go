@@ -81,6 +81,8 @@ func newPlayerModel() playerModel {
 			newCard("COPA:6"),
 			newCard("COPA:7"),
 		},
+		boxX: 2, // Coords for mySeat
+		boxY: 1, // Coords for mySeat
 	}
 }
 

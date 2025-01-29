@@ -195,6 +195,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case gameConfigPayload:
 		m.gameConfig = msg
+		if m.gameConfig.MaxPlayers == 3 {
+			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 3rd player box
+		} else if m.gameConfig.MaxPlayers == 4 {
+			m.boxes[1][0].style = m.boxes[1][0].style.BorderStyle(lipgloss.NormalBorder()) // Adding 2nd player box
+			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 4th player box
+		}
 	case gameStartedPayload:
 		m.turn = msg.StartingSeat
 		// Each player draws 3 cards
