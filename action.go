@@ -70,6 +70,7 @@ type gameWonPayload struct {
 type action struct {
 	Type    string  `json:"type"`
 	Payload Payload `json:"payload"`
+	slow    time.Duration
 }
 
 type Payload interface{}
@@ -81,7 +82,7 @@ type innerAction struct {
 
 func (a action) processAction() tea.Cmd {
 	return func() tea.Msg {
-		time.Sleep(time.Millisecond * 1000)
+		time.Sleep(a.slow)
 		return a.Payload
 	}
 }
