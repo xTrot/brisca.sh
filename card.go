@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand/v2"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,12 @@ var (
 		{11, 9, 3},
 		{12, 10, 4},
 	}
+	SUITS = []string{
+		"ORO",
+		"COPA",
+		"BASTO",
+		"ESPADA",
+	}
 )
 
 type card struct {
@@ -46,6 +53,31 @@ func newCard(cardString string) card {
 	}
 
 	index := num - 1
+
+	switch suitString {
+	case "ORO":
+		card.suit = "🪙"
+	case "COPA":
+		card.suit = "🏆"
+	case "BASTO":
+		card.suit = "🪵"
+	case "ESPADA":
+		card.suit = "⚔️"
+	}
+
+	card.num = CARDS_WITHOUT_SKIP[index][CARD_NUMBER_INDEX]
+	card.val = CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX]
+	card.score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
+
+	return card
+}
+
+func randCard() card {
+	var card card
+
+	index := rand.IntN(len(CARDS_WITHOUT_SKIP))
+
+	suitString := SUITS[rand.IntN(len(SUITS))]
 
 	switch suitString {
 	case "ORO":

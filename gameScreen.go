@@ -91,7 +91,6 @@ type gsModel struct {
 	table        tableModel
 	gameConfig   gameConfigPayload
 	turn         int
-	won          gameWonPayload
 	mySeat       int
 }
 
@@ -227,7 +226,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.cardsInPlay = []card{}
 		m.turn = msg.Seat
 	case gameWonPayload:
-		m.won = msg
+		ws := newWinScreen(m.gameConfig, m.playerSeats, msg)
+		return ws, ws.Init()
 
 	case seatsMsg:
 		m.playerSeats = msg
