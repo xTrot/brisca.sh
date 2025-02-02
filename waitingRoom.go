@@ -121,12 +121,12 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, every(wrUpdateInterval))
 		if msg.wr.Started {
-			gs := newGSModel(time.Minute)
+			gs := newGSModel()
 			return gs, gs.Init()
 		}
 
 	case startGameMsg:
-		gs := newGSModel(time.Minute)
+		gs := newGSModel()
 		return gs, gs.Init()
 
 	case leaveGameMsg:

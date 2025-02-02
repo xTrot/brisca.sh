@@ -53,36 +53,11 @@ func newPlayerModelFromSeat(s seat) playerModel {
 
 func newPlayerModel() playerModel {
 	return playerModel{
-		name:  "Username",
-		score: 0,
-		scorePile: []card{
-			newCard("ESPADA:3"),
-			newCard("BASTO:2"),
-			newCard("COPA:6"),
-			newCard("COPA:7"),
-			newCard("ESPADA:3"),
-			newCard("BASTO:2"),
-			newCard("COPA:6"),
-			newCard("COPA:7"),
-			newCard("ESPADA:3"),
-			newCard("BASTO:2"),
-			newCard("COPA:6"),
-			newCard("COPA:7"),
-			newCard("ESPADA:3"),
-			newCard("BASTO:2"),
-			newCard("COPA:6"),
-			newCard("COPA:7"),
-			newCard("ESPADA:3"),
-			newCard("BASTO:2"),
-			newCard("COPA:6"),
-			newCard("COPA:7"),
-			newCard("ESPADA:3"),
-			newCard("BASTO:2"),
-			newCard("COPA:6"),
-			newCard("COPA:7"),
-		},
-		boxX: 2, // Coords for mySeat
-		boxY: 1, // Coords for mySeat
+		name:      "Username",
+		score:     0,
+		scorePile: []card{},
+		boxX:      2, // Coords for mySeat
+		boxY:      1, // Coords for mySeat
 	}
 }
 

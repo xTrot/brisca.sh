@@ -80,7 +80,6 @@ func (ac *actionCache) ProcessAction() tea.Cmd {
 }
 
 type gsModel struct {
-	timer        timer.Model
 	spinner      spinner.Model
 	index        int
 	boxes        [3][3]box
@@ -90,13 +89,11 @@ type gsModel struct {
 	playerSeats  []playerModel
 	table        tableModel
 	gameConfig   gameConfigPayload
-	turn         int
-	mySeat       int
+	statusBar    statusBarModel
 }
 
-func newGSModel(timeout time.Duration) gsModel {
+func newGSModel() gsModel {
 	m := gsModel{}
-	m.timer = timer.New(timeout)
 	m.spinner = spinner.New()
 	var boxes [3][3]box
 	for i := 0; i < 3; i++ {
@@ -129,12 +126,14 @@ func newGSModel(timeout time.Duration) gsModel {
 		newPlayerModel(),
 	}
 	m.table = newTableModel()
+	m.statusBar = newStatusBar(m.playerSeats)
 	return m
 }
 
 func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
-	return tea.Batch(m.timer.Init(), m.spinner.Tick, tea.WindowSize(), m.getMySeat()) // These have to be serial for processSeats to work.
+	return tea.Batch(m.spinner.Tick, tea.WindowSize(), m.getMySeat(),
+		m.statusBar.Init(), updateHand(false))
 }
 
 func (m gsModel) getMySeat() tea.Cmd {
@@ -178,8 +177,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selectedCard = (m.selectedCard + 1) % len(m.hand)
 			return m, nil
 		case "enter":
-			cmd = playCard(m.selectedCard)
-			cmds = append(cmds, cmd, updateHand)
+			cmd = m.playCard(m.selectedCard)
+			cmds = append(cmds, cmd, updateHand(true))
 			return m, tea.Batch(cmds...)
 		}
 
@@ -187,13 +186,15 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		cmds = append(cmds, cmd)
 	case timer.TickMsg:
-		m.timer, cmd = m.timer.Update(msg)
-		cmds = append(cmds, cmd, updateHand)
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 	case updateHandMsg:
 		m.hand = msg.hand
 
 	case gameConfigPayload:
 		m.gameConfig = msg
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 		if m.gameConfig.MaxPlayers == 3 {
 			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 3rd player box
 		} else if m.gameConfig.MaxPlayers == 4 {
@@ -201,7 +202,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 4th player box
 		}
 	case gameStartedPayload:
-		m.turn = msg.StartingSeat
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 		// Each player draws 3 cards
 		m.table.deckSize -= len(msg.Seats) * 3
 		m.table.cardsInPlay = []card{}
@@ -210,6 +212,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case bottomCardSelectedPayload:
 		m.table.suitCard = msg.bottomCard
 	case gracePeriodEndedPayload:
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 	case swapBottomCardPayload:
 		m.table.suitCard = newBottomCard(m.table.suitCard)
 	case cardDrawnPayload:
@@ -218,21 +222,27 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case cardPlayedPayload:
 		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
 		m.playerSeats[msg.Seat].handSize--
-		m.turn = (m.turn + 1) % m.gameConfig.MaxPlayers
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 	case turnWonPayload:
 		slices.Reverse(m.table.cardsInPlay)
 		m.playerSeats[msg.Seat].scorePile = append(m.playerSeats[msg.Seat].scorePile, m.table.cardsInPlay...)
 		m.playerSeats[msg.Seat].score = m.playerSeats[msg.Seat].UpdateScore()
 		m.table.cardsInPlay = []card{}
-		m.turn = msg.Seat
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
+		cmds = append(cmds, updateHand(false))
 	case gameWonPayload:
 		ws := newWinScreen(m.gameConfig, m.playerSeats, msg)
 		return ws, ws.Init()
 
 	case seatsMsg:
 		m.playerSeats = msg
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 	case mySeat:
-		m.mySeat = msg.Seat
+		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 		cmd := m.actionCache.Refresh()
 		cmds = append(cmds, cmd)
 	}
@@ -248,8 +258,8 @@ func (m gsModel) processSeats(seats []seat) tea.Cmd {
 		for i := 0; i < len(seats); i++ {
 			player := newPlayerModelFromSeat(seats[i])
 			// This part only works because case mySeat: happens first then seatsMsg
-			adjustedSeat := (i - m.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
-			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.mySeat, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
+			adjustedSeat := (i - m.statusBar.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
+			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.statusBar.turn, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
 			if m.gameConfig.MaxPlayers == 2 {
 				player.boxX = SEAT_BASED_BOXES_2P[adjustedSeat][0]
 				player.boxY = SEAT_BASED_BOXES_2P[adjustedSeat][1]
@@ -320,7 +330,7 @@ func (m gsModel) View() string {
 		x := m.playerSeats[i].boxX
 		y := m.playerSeats[i].boxY
 		m.boxes[x][y].view = m.playerSeats[i].View()
-		if m.turn == i {
+		if m.statusBar.turn == i {
 			m.boxes[x][y].style = m.boxes[x][y].style.
 				BorderForeground(activeColor)
 		} else {
@@ -338,7 +348,7 @@ func (m gsModel) View() string {
 		s = lipgloss.JoinVertical(lipgloss.Top, s, row)
 	}
 	s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
-	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, "Status: Your Turn, timer: ", m.timer.View()))
+	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View()))
 	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render("← →: select card      enter: play card"))
 	return s
 }
@@ -373,18 +383,27 @@ type updateHandMsg struct {
 	hand []card
 }
 
-func updateHand() tea.Msg {
-	newHand := handRequest()
+func updateHand(delay bool) tea.Cmd {
+	return func() tea.Msg {
+		if delay {
+			time.Sleep(time.Millisecond * 500)
+		}
+		newHand := handRequest()
 
-	return updateHandMsg{
-		hand: newHand,
+		return updateHandMsg{
+			hand: newHand,
+		}
 	}
 }
 
-func playCard(i int) tea.Cmd {
-	index := handIndex{Index: i}
-	return func() tea.Msg {
-		playCardRequest(index)
-		return nil
+func (m *gsModel) playCard(i int) tea.Cmd {
+	if m.statusBar.isMyTurn() {
+		m.hand = append(m.hand[:i], m.hand[i+1:]...)
+		index := handIndex{Index: i}
+		return func() tea.Msg {
+			playCardRequest(index)
+			return nil
+		}
 	}
+	return nil
 }
