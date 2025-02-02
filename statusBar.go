@@ -12,6 +12,7 @@ import (
 var (
 	statusString = "Status: Your Turn, timer: %s"
 	TURN_LENGTH  = time.Second * 59 // Actually one minute
+	GRACE_LENGTH = time.Second * 9  // Actually ten seconds
 )
 
 type statusBarModel struct {
@@ -25,7 +26,7 @@ type statusBarModel struct {
 
 func newStatusBar(players []playerModel) statusBarModel {
 	return statusBarModel{
-		timer:   timer.New(TURN_LENGTH),
+		timer:   timer.New(GRACE_LENGTH),
 		players: players,
 	}
 }
@@ -50,10 +51,12 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		m.players = msg
 	case gameStartedPayload:
 		m.turn = msg.StartingSeat
-		m.timer.Timeout = TURN_LENGTH
+		m.timer = timer.New(GRACE_LENGTH)
+		cmds = append(cmds, m.timer.Init())
 	case gracePeriodEndedPayload:
 		m.hasStarted = true
-		m.timer.Timeout = TURN_LENGTH
+		m.timer = timer.New(TURN_LENGTH)
+		cmds = append(cmds, m.timer.Init())
 	case gameConfigPayload:
 		m.maxPlayers = msg.MaxPlayers
 	case cardPlayedPayload:
@@ -64,10 +67,12 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 			panic(errMsg)
 		}
 		m.turn = (m.turn + 1) % m.maxPlayers
-		m.timer.Timeout = TURN_LENGTH
+		m.timer = timer.New(TURN_LENGTH)
+		cmds = append(cmds, m.timer.Init())
 	case turnWonPayload:
 		m.turn = msg.Seat
-		m.timer.Timeout = TURN_LENGTH
+		m.timer = timer.New(TURN_LENGTH)
+		cmds = append(cmds, m.timer.Init())
 	}
 
 	return m, tea.Batch(cmds...)
@@ -83,7 +88,7 @@ func (m statusBarModel) View() string {
 		}
 		return fmt.Sprintf("Status: %s, timer: %s", turnString, m.timer.View())
 	} else {
-		return "Status: Grace period."
+		return fmt.Sprintf("Status: Grace period, timer: %s", m.timer.View())
 	}
 }
 
