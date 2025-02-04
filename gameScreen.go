@@ -58,14 +58,14 @@ type actionCache struct {
 
 type newActionCacheMsg actionCache
 
-func (ac *actionCache) Refresh() tea.Cmd {
-	return tea.Every(ac.refreshTime, func(t time.Time) tea.Msg {
-		fetched := actionsRequest()
+func (m *gsModel) Refresh() tea.Cmd {
+	return tea.Every(m.actionCache.refreshTime, func(t time.Time) tea.Msg {
+		fetched := m.userGlobal.rh.actionsRequest()
 		if len(fetched) != 0 {
 			log.Debug("Actions fetched: ", "fetched", fetched)
 		}
-		ac.actions = append(ac.actions, fetched...)
-		return newActionCacheMsg(*ac)
+		m.actionCache.actions = append(m.actionCache.actions, fetched...)
+		return newActionCacheMsg(m.actionCache)
 	})
 }
 
@@ -135,13 +135,13 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 
 func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
-	return tea.Batch(m.spinner.Tick, tea.WindowSize(), m.getMySeat(),
-		m.statusBar.Init(), updateHand(false))
+	return tea.Batch(m.spinner.Tick, m.userGlobal.WindowSize(), m.getMySeat(),
+		m.statusBar.Init(), m.updateHand(false))
 }
 
 func (m gsModel) getMySeat() tea.Cmd {
 	return func() tea.Msg {
-		mySeat := mySeatRequest()
+		mySeat := m.userGlobal.rh.mySeatRequest()
 		return mySeat
 	}
 }
@@ -162,14 +162,14 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateWindow(msg)
 	case newActionCacheMsg:
 		m.actionCache = actionCache(msg)
-		cmd = m.actionCache.Refresh()
+		cmd = m.Refresh()
 		cmds = append(cmds, cmd)
 		cmd = m.actionCache.ProcessAction()
 		cmds = append(cmds, cmd)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-			leaveGameRequest()
+			m.userGlobal.rh.leaveGameRequest()
 			return m, tea.Quit
 		case "left":
 			handSize := len(m.hand)
@@ -181,7 +181,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter":
 			cmd = m.playCard(m.selectedCard)
-			cmds = append(cmds, cmd, updateHand(true))
+			cmds = append(cmds, cmd, m.updateHand(true))
 			return m, tea.Batch(cmds...)
 		}
 
@@ -234,7 +234,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.cardsInPlay = []card{}
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-		cmds = append(cmds, updateHand(false))
+		cmds = append(cmds, m.updateHand(false))
 	case gameWonPayload:
 		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
 		return ws, ws.Init()
@@ -246,7 +246,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case mySeat:
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-		cmd := m.actionCache.Refresh()
+		cmd := m.Refresh()
 		cmds = append(cmds, cmd)
 	}
 
@@ -386,12 +386,12 @@ type updateHandMsg struct {
 	hand []card
 }
 
-func updateHand(delay bool) tea.Cmd {
+func (m *gsModel) updateHand(delay bool) tea.Cmd {
 	return func() tea.Msg {
 		if delay {
 			time.Sleep(time.Millisecond * 500)
 		}
-		newHand := handRequest()
+		newHand := m.userGlobal.rh.handRequest()
 
 		return updateHandMsg{
 			hand: newHand,
@@ -404,7 +404,7 @@ func (m *gsModel) playCard(i int) tea.Cmd {
 		m.hand = append(m.hand[:i], m.hand[i+1:]...)
 		index := handIndex{Index: i}
 		return func() tea.Msg {
-			playCardRequest(index)
+			m.userGlobal.rh.playCardRequest(index)
 			return nil
 		}
 	}

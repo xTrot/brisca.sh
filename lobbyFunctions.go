@@ -6,7 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func newItemDelegate(keys *delegateKeyMap) list.DefaultDelegate {
+func newItemDelegate(keys *delegateKeyMap, lm *lobbyModel) list.DefaultDelegate {
 	d := list.NewDefaultDelegate()
 
 	d.UpdateFunc = func(msg tea.Msg, m *list.Model) tea.Cmd {
@@ -25,7 +25,7 @@ func newItemDelegate(keys *delegateKeyMap) list.DefaultDelegate {
 				var cmds []tea.Cmd
 				cmd := m.NewStatusMessage(statusMessageStyle("You chose " + title))
 				cmds = append(cmds, cmd)
-				cmd = joinGame(title)
+				cmd = lm.joinGame(title)
 				cmds = append(cmds, cmd)
 				return tea.Sequence(cmds...)
 			}
@@ -80,17 +80,4 @@ func newDelegateKeyMap() *delegateKeyMap {
 
 type joinGameMsg struct {
 	gameId gameId
-}
-
-func joinGame(title string) tea.Cmd {
-	return func() tea.Msg {
-		gameId := gameId{GameId: title}
-		if joinGameRequest(gameId) {
-			return joinGameMsg{
-				gameId: gameId,
-			}
-		} else {
-			return nil
-		}
-	}
 }

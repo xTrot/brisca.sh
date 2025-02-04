@@ -18,6 +18,17 @@ var (
 	baseurl = "http://localhost:8000"
 )
 
+type requestHandler struct {
+	jar *cookiejar.Jar
+}
+
+func newRequestHandler() *requestHandler {
+	jar, _ := cookiejar.New(nil)
+	return &requestHandler{
+		jar: jar,
+	}
+}
+
 type register struct {
 	Username string `json:"username"`
 }
@@ -103,7 +114,7 @@ type handIndex struct {
 	Index int `json:"index"`
 }
 
-func statusRequest() bool {
+func (m requestHandler) statusRequest() bool {
 	requestURL := fmt.Sprintf("%s/status", baseurl)
 	res, err := http.Get(requestURL)
 	if err != nil {
@@ -120,13 +131,13 @@ func statusRequest() bool {
 }
 
 // {"username" : "Guest"}
-func registerRequest(register register) bool {
+func (m requestHandler) registerRequest(register register) bool {
 	payload, _ := json.Marshal(register)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/register", baseurl)
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Post(requestURL, "raw", reader)
@@ -145,12 +156,12 @@ func registerRequest(register register) bool {
 	return true
 }
 
-func lobbyRequest() []list.Item {
+func (m requestHandler) lobbyRequest() []list.Item {
 	requestURL := fmt.Sprintf("%s/lobby", baseurl)
 	items := []list.Item{}
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Get(requestURL)
@@ -183,13 +194,13 @@ func lobbyRequest() []list.Item {
 	return items
 }
 
-func makeGameRequest(gc gameConfig) newGame {
+func (m requestHandler) makeGameRequest(gc gameConfig) newGame {
 	payload, _ := json.Marshal(gc)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/makegame", baseurl)
 	game := newGame{}
 
-	client := &http.Client{Jar: jar}
+	client := &http.Client{Jar: m.jar}
 
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
@@ -216,12 +227,12 @@ func makeGameRequest(gc gameConfig) newGame {
 	return game
 }
 
-func waitingRoomRequest() waitingRoom {
+func (m requestHandler) waitingRoomRequest() waitingRoom {
 	requestURL := fmt.Sprintf("%s/waitingroom", baseurl)
 	items := []list.Item{}
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Get(requestURL)
@@ -260,12 +271,12 @@ func waitingRoomRequest() waitingRoom {
 	return waitingroom
 }
 
-func leaveGameRequest() bool {
+func (m requestHandler) leaveGameRequest() bool {
 	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/leavegame", baseurl)
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Post(requestURL, "raw", reader)
@@ -284,11 +295,11 @@ func leaveGameRequest() bool {
 	return true
 }
 
-func readyRequest() bool {
+func (m requestHandler) readyRequest() bool {
 	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/ready", baseurl)
 
-	client := &http.Client{Jar: jar}
+	client := &http.Client{Jar: m.jar}
 
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
@@ -306,11 +317,11 @@ func readyRequest() bool {
 	return true
 }
 
-func startGameRequest() bool {
+func (m requestHandler) startGameRequest() bool {
 	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/startgame", baseurl)
 
-	client := &http.Client{Jar: jar}
+	client := &http.Client{Jar: m.jar}
 
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
@@ -328,13 +339,13 @@ func startGameRequest() bool {
 	return true
 }
 
-func joinGameRequest(gameId gameId) bool {
+func (m requestHandler) joinGameRequest(gameId gameId) bool {
 	payload, _ := json.Marshal(gameId)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/joingame", baseurl)
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Post(requestURL, "raw", reader)
@@ -353,12 +364,12 @@ func joinGameRequest(gameId gameId) bool {
 	return true
 }
 
-func handRequest() []card {
+func (m requestHandler) handRequest() []card {
 	requestURL := fmt.Sprintf("%s/hand", baseurl)
 	var hand []card
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Get(requestURL)
@@ -397,13 +408,13 @@ func handFromStrings(handStrings []string) []card {
 	return hand
 }
 
-func playCardRequest(index handIndex) bool {
+func (m requestHandler) playCardRequest(index handIndex) bool {
 	payload, _ := json.Marshal(index)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/playcard", baseurl)
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Post(requestURL, "raw", reader)
@@ -422,12 +433,12 @@ func playCardRequest(index handIndex) bool {
 	return true
 }
 
-func actionsRequest() []action {
+func (m requestHandler) actionsRequest() []action {
 	var actions []action
 	requestURL := fmt.Sprintf("%s/actions", baseurl)
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Get(requestURL)
@@ -455,12 +466,12 @@ func actionsRequest() []action {
 	return actions
 }
 
-func mySeatRequest() mySeat {
+func (m requestHandler) mySeatRequest() mySeat {
 	var seat mySeat
 	requestURL := fmt.Sprintf("%s/seat", baseurl)
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Get(requestURL)
@@ -488,7 +499,7 @@ func mySeatRequest() mySeat {
 	return seat
 }
 
-func changeTeamRequest(spectator bool) bool {
+func (m requestHandler) changeTeamRequest(spectator bool) bool {
 	reader := bytes.NewReader([]byte{})
 	if spectator {
 		reader = bytes.NewReader([]byte("{team:S}")) // Not worth implementing the JSON.
@@ -497,7 +508,7 @@ func changeTeamRequest(spectator bool) bool {
 	requestURL := fmt.Sprintf("%s/changeteam", baseurl)
 
 	client := &http.Client{
-		Jar: jar,
+		Jar: m.jar,
 	}
 
 	res, err := client.Post(requestURL, "raw", reader)

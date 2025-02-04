@@ -86,14 +86,14 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 func (m winScreen) Init() tea.Cmd {
 	if m.gameConfig.MaxPlayers == 3 {
 		return tea.Batch(
-			tea.WindowSize(),
+			m.userGlobal.WindowSize(),
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
 			m.scArray[2].Init(),
 		)
 	} else {
 		return tea.Batch(
-			tea.WindowSize(),
+			m.userGlobal.WindowSize(),
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
 		)

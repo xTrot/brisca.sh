@@ -52,6 +52,7 @@ type userGlobal struct {
 	renderer *lipgloss.Renderer
 	sizeMsg  *tea.WindowSizeMsg
 	username *string
+	rh       *requestHandler
 }
 
 func (m userGlobal) WindowSize() tea.Cmd {
@@ -70,11 +71,13 @@ func newModel(session *ssh.Session) registerModel {
 	m.textInput.Width = 20
 	m.textInput.Prompt = "\tWhat's your username?\n\t\t> "
 	m.help = newHelp()
-	m.isUp = statusRequest()
 	m.userGlobal = &userGlobal{
 		session:  session,
 		renderer: bubbletea.MakeRenderer(*session),
+		rh:       newRequestHandler(),
 	}
+	m.isUp = m.userGlobal.rh.statusRequest()
+
 	m.upStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("10"))
 	m.downStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("9"))
 	m.helpStyle = m.userGlobal.renderer.NewStyle().
@@ -115,7 +118,7 @@ func (m registerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.help.keys.Enter):
 			var register register
 			register.Username = m.textInput.Value()
-			if registerRequest(register) {
+			if m.userGlobal.rh.registerRequest(register) {
 				m.userGlobal.username = &register.Username
 				lm := newLobby(m.userGlobal)
 				return lm, tea.Batch(lm.Init())
@@ -201,5 +204,4 @@ func reallyNotMain() {
 		log.Fatal(err)
 	}
 
-	leaveGameRequest()
 }

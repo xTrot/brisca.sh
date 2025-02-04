@@ -84,7 +84,10 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 	items := make([]list.Item, numItems)
 
 	// Setup list
-	delegate := newItemDelegate(delegateKeys)
+
+	lm := lobbyModel{}
+
+	delegate := newItemDelegate(delegateKeys, &lm)
 	gamesList := list.New(items, delegate, 0, 0)
 	gamesList.Styles.Title = titleStyle
 	gamesList.AdditionalFullHelpKeys = func() []key.Binding {
@@ -97,13 +100,13 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 		}
 	}
 
-	return lobbyModel{
-		list:         gamesList,
-		keys:         listKeys,
-		delegateKeys: delegateKeys,
-		lastUpdate:   time.Now(),
-		userGlobal:   userGlobal,
-	}
+	lm.list = gamesList
+	lm.keys = listKeys
+	lm.delegateKeys = delegateKeys
+	lm.lastUpdate = time.Now()
+	lm.userGlobal = userGlobal
+
+	return lm
 }
 
 type tickMsg time.Time
@@ -205,7 +208,7 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 
 		return lm, tea.Batch(cmd, func() tea.Msg {
 			time.Sleep(time.Second * testDelay)
-			newItems := lobbyRequest()
+			newItems := lm.userGlobal.rh.lobbyRequest()
 			return itemsMsg{
 				items: newItems,
 			}
@@ -213,4 +216,17 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 	}
 
 	return lm, nil
+}
+
+func (m *lobbyModel) joinGame(title string) tea.Cmd {
+	return func() tea.Msg {
+		gameId := gameId{GameId: title}
+		if m.userGlobal.rh.joinGameRequest(gameId) {
+			return joinGameMsg{
+				gameId: gameId,
+			}
+		} else {
+			return nil
+		}
+	}
 }
