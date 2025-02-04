@@ -90,10 +90,13 @@ type gsModel struct {
 	table        tableModel
 	gameConfig   gameConfigPayload
 	statusBar    statusBarModel
+	userGlobal   *userGlobal
 }
 
-func newGSModel() gsModel {
-	m := gsModel{}
+func newGSModel(userGlobal *userGlobal) gsModel {
+	m := gsModel{
+		userGlobal: userGlobal,
+	}
 	m.spinner = spinner.New()
 	var boxes [3][3]box
 	for i := 0; i < 3; i++ {
@@ -233,7 +236,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, updateHand(false))
 	case gameWonPayload:
-		ws := newWinScreen(m.gameConfig, m.playerSeats, msg)
+		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
 		return ws, ws.Init()
 
 	case seatsMsg:

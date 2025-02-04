@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 )
 
 const (
@@ -65,13 +66,14 @@ type lobbyModel struct {
 	keys         *listKeyMap
 	delegateKeys *delegateKeyMap
 	lastUpdate   time.Time
+	userGlobal   *userGlobal
 }
 
 type itemsMsg struct {
 	items []list.Item
 }
 
-func newLobby() lobbyModel {
+func newLobby(userGlobal *userGlobal) lobbyModel {
 	var (
 		delegateKeys = newDelegateKeyMap()
 		listKeys     = newListKeyMap()
@@ -100,6 +102,7 @@ func newLobby() lobbyModel {
 		keys:         listKeys,
 		delegateKeys: delegateKeys,
 		lastUpdate:   time.Now(),
+		userGlobal:   userGlobal,
 	}
 }
 
@@ -113,7 +116,7 @@ func doTick() tea.Cmd {
 
 func (lm lobbyModel) Init() tea.Cmd {
 	_, cmd := lm.updateIfStale(0)
-	return tea.Batch(cmd, doTick(), tea.WindowSize(), lm.list.StartSpinner())
+	return tea.Batch(cmd, doTick(), lm.userGlobal.WindowSize(), lm.list.StartSpinner())
 }
 
 func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -123,7 +126,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case joinGameMsg:
-		wrm := newWaitingRoom()
+		wrm := newWaitingRoom(m.userGlobal)
 		wrm.list.Title = "GameID: " + msg.gameId.GameId
 		cmd = wrm.Init()
 		return wrm, cmd
@@ -142,6 +145,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
+		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
 
 	case tea.KeyMsg:
 		// Don't match any of the keys below if we're actively filtering.
@@ -171,7 +175,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case key.Matches(msg, m.keys.insertItem):
-			mg := newMakeGame(m)
+			mg := newMakeGame(m, m.userGlobal)
 			return mg, mg.Init()
 		}
 	}

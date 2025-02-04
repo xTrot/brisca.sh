@@ -18,6 +18,11 @@ var (
 			Align(lipgloss.Center, lipgloss.Center).
 			BorderStyle(lipgloss.HiddenBorder()).
 			BorderForeground(lipgloss.Color("69"))
+	helpStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241")).
+			Width(75).Height(5).
+			Align(lipgloss.Left, lipgloss.Center).
+			BorderStyle(lipgloss.HiddenBorder())
 )
 
 type winScreen struct {
@@ -28,13 +33,14 @@ type winScreen struct {
 	style      lipgloss.Style
 	gameConfig gameConfigPayload
 	winString  string
+	userGlobal *userGlobal
 }
 
 type doneCounting struct {
 	index int
 }
 
-func newWinScreen(gc gameConfigPayload, players []playerModel, gameWon gameWonPayload) winScreen {
+func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWonPayload, userGlobal *userGlobal) winScreen {
 
 	var firstScoreCounter scoreCounter
 	var secondScoreCounter scoreCounter
@@ -65,14 +71,15 @@ func newWinScreen(gc gameConfigPayload, players []playerModel, gameWon gameWonPa
 
 	return winScreen{
 		style:      winScreenStyle,
-		gameConfig: gc,
+		gameConfig: *gc,
 		scArray: [3]scoreCounter{
 			firstScoreCounter,
 			secondScoreCounter,
 			thirdScoreCounter,
 		},
-		scSize:    scSize,
-		winString: winString,
+		scSize:     scSize,
+		winString:  winString,
+		userGlobal: userGlobal,
 	}
 }
 
@@ -104,7 +111,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		m.quitting = true
-		lm := newLobby()
+		lm := newLobby(m.userGlobal)
 		return lm, lm.Init()
 	case pretendCountMsg:
 		switch msg.id {

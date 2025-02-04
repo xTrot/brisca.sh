@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 )
 
 const (
@@ -59,9 +60,10 @@ type waitingRoomModel struct {
 	keys           *wrKeyMap
 	descDelegate   list.DefaultDelegate
 	noDescDelegate list.DefaultDelegate
+	userGlobal     *userGlobal
 }
 
-func newWaitingRoom() waitingRoomModel {
+func newWaitingRoom(userGlobal *userGlobal) waitingRoomModel {
 	var (
 		listKeys = newWrKeyMap()
 	)
@@ -75,6 +77,7 @@ func newWaitingRoom() waitingRoomModel {
 		keys:           listKeys,
 		descDelegate:   descDelegate,
 		noDescDelegate: noDescDelegate,
+		userGlobal:     userGlobal,
 	}
 
 	wrm.list.AdditionalFullHelpKeys = func() []key.Binding {
@@ -95,7 +98,7 @@ func newWaitingRoom() waitingRoomModel {
 			listKeys.leave,
 		}
 	}
-	wrm.list.Title = "User " + username
+	wrm.list.Title = "User " + *wrm.userGlobal.username
 	wrm.list.DisableQuitKeybindings()
 	wrm.list.SetFilteringEnabled(false)
 	wrm.list.SetShowStatusBar(false)
@@ -104,7 +107,7 @@ func newWaitingRoom() waitingRoomModel {
 }
 
 func (m waitingRoomModel) Init() tea.Cmd {
-	return tea.Batch(every(wrUpdateInterval), tea.WindowSize())
+	return tea.Batch(every(wrUpdateInterval), m.userGlobal.WindowSize())
 }
 
 func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -121,17 +124,17 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, every(wrUpdateInterval))
 		if msg.wr.Started {
-			gs := newGSModel()
+			gs := newGSModel(m.userGlobal)
 			return gs, gs.Init()
 		}
 
 	case startGameMsg:
-		gs := newGSModel()
+		gs := newGSModel(m.userGlobal)
 		return gs, gs.Init()
 
 	case leaveGameMsg:
-		lobby := newLobby()
-		lobby.list.Title = "User: " + username
+		lobby := newLobby(m.userGlobal)
+		lobby.list.Title = "User: " + *m.userGlobal.username
 		cmds = append(cmds, lobby.Init())
 		lm, cmd := lobby.Update(msg)
 		cmds = append(cmds, cmd)
@@ -140,6 +143,7 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
+		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
 
 	case tea.KeyMsg:
 

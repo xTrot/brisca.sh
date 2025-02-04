@@ -15,11 +15,12 @@ var (
 )
 
 type makeGameModel struct {
-	form     *huh.Form // huh.Form is just a tea.Model
-	nextView tea.Model
+	form       *huh.Form // huh.Form is just a tea.Model
+	nextView   tea.Model
+	userGlobal *userGlobal
 }
 
-func newMakeGame(nv tea.Model) makeGameModel {
+func newMakeGame(nv tea.Model, userGlobal *userGlobal) makeGameModel {
 	return makeGameModel{
 		form: huh.NewForm(
 			huh.NewGroup(
@@ -45,7 +46,8 @@ func newMakeGame(nv tea.Model) makeGameModel {
 					Value(&confirm),
 			),
 		),
-		nextView: nv,
+		nextView:   nv,
+		userGlobal: userGlobal,
 	}
 }
 
@@ -83,7 +85,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Fatal(err)
 		}
 
-		wrm := newWaitingRoom()
+		wrm := newWaitingRoom(m.userGlobal)
 		wrm.list.Title = "GameID: " + game.GameId
 		cmd = wrm.Init()
 		return wrm, cmd
