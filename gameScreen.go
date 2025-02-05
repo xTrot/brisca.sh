@@ -401,9 +401,13 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 
 func (m *gsModel) playCard(i int) tea.Cmd {
 	if m.statusBar.isMyTurn() {
-		m.hand = append(m.hand[:i], m.hand[i+1:]...)
-		index := handIndex{Index: i}
 		return func() tea.Msg {
+			if len(m.hand) == 1 {
+				m.hand = []card{}
+			} else {
+				m.hand = append(m.hand[:i], m.hand[i+1:]...)
+			}
+			index := handIndex{Index: i}
 			m.userGlobal.rh.playCardRequest(index)
 			return nil
 		}
