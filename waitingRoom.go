@@ -27,6 +27,7 @@ type wrKeyMap struct {
 	changeTeam key.Binding
 	leave      key.Binding
 	spectate   key.Binding
+	quit       key.Binding
 }
 
 func newWrKeyMap() *wrKeyMap {
@@ -50,6 +51,10 @@ func newWrKeyMap() *wrKeyMap {
 		spectate: key.NewBinding(
 			key.WithKeys("w"),
 			key.WithHelp("w", "spectate"),
+		),
+		quit: key.NewBinding(
+			key.WithKeys("ctrl-c"),
+			key.WithHelp("ctrl-c", "quit"),
 		),
 	}
 }
@@ -149,6 +154,8 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 
 		switch {
+		case key.Matches(msg, m.keys.quit):
+			return m, tea.Quit
 		case key.Matches(msg, m.keys.ready):
 			cmd = m.readyToggle()
 			cmds = append(cmds, cmd)

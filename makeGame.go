@@ -91,6 +91,15 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return wrm, cmd
 	}
 
+	switch msg := msg.(type) {
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl-c":
+			return m, tea.Quit
+		}
+	}
+
 	return m, cmd
 }
 

@@ -29,7 +29,6 @@ type winScreen struct {
 	scArray    [3]scoreCounter
 	scSize     int
 	countDone  int
-	quitting   bool
 	style      lipgloss.Style
 	gameConfig gameConfigPayload
 	winString  string
@@ -111,7 +110,6 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.style = m.style.Width(msg.Width - 2).Height(msg.Height - 2)
 
 	case tea.KeyMsg:
-		m.quitting = true
 		lm := newLobby(m.userGlobal)
 		return lm, lm.Init()
 	case pretendCountMsg:
