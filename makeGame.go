@@ -10,18 +10,17 @@ import (
 	"github.com/charmbracelet/huh/spinner"
 )
 
-var (
-	confirm bool = false
-)
-
 type makeGameModel struct {
 	form       *huh.Form // huh.Form is just a tea.Model
 	nextView   tea.Model
 	userGlobal *userGlobal
+	confirm    *bool
 }
 
 func newMakeGame(nv tea.Model, userGlobal *userGlobal) makeGameModel {
+	var confirm bool
 	return makeGameModel{
+		confirm: &confirm,
 		form: huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[string]().
@@ -64,6 +63,11 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.form.State == huh.StateCompleted {
+
+		if !*m.confirm {
+			return m.nextView, m.nextView.Init()
+		}
+
 		gc := gameConfig{
 			GameType:       m.form.GetString("gameType"),
 			MaxPlayers:     m.form.GetInt("maxPlayers"),
