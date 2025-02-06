@@ -188,6 +188,19 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.playCard(m.selectedCard)
 			cmds = append(cmds, cmd, m.updateHand(true))
 			return m, tea.Batch(cmds...)
+		case "1":
+			cmd = m.playCard(0)
+			cmds = append(cmds, cmd, m.updateHand(true))
+			return m, tea.Batch(cmds...)
+		case "2":
+			cmd = m.playCard(1)
+			cmds = append(cmds, cmd, m.updateHand(true))
+			return m, tea.Batch(cmds...)
+		case "3":
+			cmd = m.playCard(2)
+			cmds = append(cmds, cmd, m.updateHand(true))
+			return m, tea.Batch(cmds...)
+
 		}
 
 	case spinner.TickMsg:
@@ -407,6 +420,10 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 func (m *gsModel) playCard(i int) tea.Cmd {
 	if m.statusBar.isMyTurn() {
 		return func() tea.Msg {
+			handSize := len(m.hand)
+			if handSize <= i {
+				return nil
+			}
 			if len(m.hand) == 1 {
 				m.hand = []card{}
 			} else {
