@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,6 +24,7 @@ var (
 			Width(75).Height(5).
 			Align(lipgloss.Left, lipgloss.Center).
 			BorderStyle(lipgloss.HiddenBorder())
+	DEBOUNCE_TIME = time.Second
 )
 
 type winScreen struct {
@@ -33,6 +35,16 @@ type winScreen struct {
 	gameConfig gameConfigPayload
 	winString  string
 	userGlobal *userGlobal
+	debounced  bool
+}
+
+type debounceMsg struct{}
+
+func debounce() tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(DEBOUNCE_TIME)
+		return debounceMsg{}
+	}
 }
 
 type doneCounting struct {
@@ -89,12 +101,14 @@ func (m winScreen) Init() tea.Cmd {
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
 			m.scArray[2].Init(),
+			debounce(),
 		)
 	} else {
 		return tea.Batch(
 			m.userGlobal.LastWindowSizeReplay(),
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
+			debounce(),
 		)
 	}
 }
@@ -109,9 +123,14 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.userGlobal.sizeMsg = &msg
 		m.style = m.style.Width(msg.Width - 2).Height(msg.Height - 2)
 
+	case debounceMsg:
+		m.debounced = true
+
 	case tea.KeyMsg:
-		lm := newLobby(m.userGlobal)
-		return lm, lm.Init()
+		if m.debounced {
+			lm := newLobby(m.userGlobal)
+			return lm, lm.Init()
+		}
 	case pretendCountMsg:
 		switch msg.id {
 		case 0:
