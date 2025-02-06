@@ -119,7 +119,7 @@ func doTick() tea.Cmd {
 
 func (lm lobbyModel) Init() tea.Cmd {
 	_, cmd := lm.updateIfStale(0)
-	return tea.Batch(cmd, doTick(), lm.userGlobal.WindowSize(), lm.list.StartSpinner())
+	return tea.Batch(cmd, doTick(), lm.userGlobal.LastWindowSizeReplay(), lm.list.StartSpinner())
 }
 
 func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -146,6 +146,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case tea.WindowSizeMsg:
+		m.userGlobal.sizeMsg = &msg
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")

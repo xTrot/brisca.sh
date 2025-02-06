@@ -135,7 +135,7 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 
 func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
-	return tea.Batch(m.spinner.Tick, m.userGlobal.WindowSize(), m.getMySeat(),
+	return tea.Batch(m.spinner.Tick, m.userGlobal.LastWindowSizeReplay(), m.getMySeat(),
 		m.statusBar.Init(), m.updateHand(false))
 }
 
@@ -159,6 +159,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.WindowSizeMsg:
+		m.userGlobal.sizeMsg = &msg
 		return m.updateWindow(msg)
 	case newActionCacheMsg:
 		m.actionCache = actionCache(msg)

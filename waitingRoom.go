@@ -107,7 +107,7 @@ func newWaitingRoom(userGlobal *userGlobal) waitingRoomModel {
 }
 
 func (m waitingRoomModel) Init() tea.Cmd {
-	return tea.Batch(m.every(wrUpdateInterval), m.userGlobal.WindowSize())
+	return tea.Batch(m.every(wrUpdateInterval), m.userGlobal.LastWindowSizeReplay())
 }
 
 func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -141,6 +141,7 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return lm, tea.Batch(cmds...)
 
 	case tea.WindowSizeMsg:
+		m.userGlobal.sizeMsg = &msg
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")

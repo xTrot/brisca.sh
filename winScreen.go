@@ -86,14 +86,14 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 func (m winScreen) Init() tea.Cmd {
 	if m.gameConfig.MaxPlayers == 3 {
 		return tea.Batch(
-			m.userGlobal.WindowSize(),
+			m.userGlobal.LastWindowSizeReplay(),
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
 			m.scArray[2].Init(),
 		)
 	} else {
 		return tea.Batch(
-			m.userGlobal.WindowSize(),
+			m.userGlobal.LastWindowSizeReplay(),
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
 		)
@@ -107,6 +107,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		m.userGlobal.sizeMsg = &msg
 		m.style = m.style.Width(msg.Width - 2).Height(msg.Height - 2)
 
 	case tea.KeyMsg:

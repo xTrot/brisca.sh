@@ -55,7 +55,7 @@ type userGlobal struct {
 	rh       *requestHandler
 }
 
-func (m userGlobal) WindowSize() tea.Cmd {
+func (m userGlobal) LastWindowSizeReplay() tea.Cmd {
 	return func() tea.Msg {
 		return *m.sizeMsg
 	}
