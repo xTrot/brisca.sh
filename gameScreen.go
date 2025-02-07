@@ -172,10 +172,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			m.userGlobal.rh.leaveGameRequest()
 			return m, tea.Quit
-		case "q":
-			m.userGlobal.rh.leaveGameRequest()
-			lm := newLobby(m.userGlobal)
-			return lm, lm.Init()
+		// case "q":
+		// 	m.userGlobal.rh.leaveGameRequest()
+		// 	lm := newLobby(m.userGlobal)
+		// 	return lm, lm.Init()
 		case "left":
 			handSize := len(m.hand)
 			rawMove := m.selectedCard - 1
