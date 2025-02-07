@@ -34,6 +34,7 @@ type listKeyMap struct {
 	togglePagination key.Binding
 	toggleHelpMenu   key.Binding
 	insertItem       key.Binding
+	joinGame         key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -57,6 +58,10 @@ func newListKeyMap() *listKeyMap {
 		toggleHelpMenu: key.NewBinding(
 			key.WithKeys("H"),
 			key.WithHelp("H", "toggle help"),
+		),
+		joinGame: key.NewBinding(
+			key.WithKeys("j"),
+			key.WithHelp("j", "join game"),
 		),
 	}
 }
@@ -181,6 +186,10 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.insertItem):
 			mg := newMakeGame(m, m.userGlobal)
 			return mg, mg.Init()
+
+		case key.Matches(msg, m.keys.joinGame):
+			jg := newJoinGame(m, m.userGlobal)
+			return jg, jg.Init()
 		}
 	}
 
