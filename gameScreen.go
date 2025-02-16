@@ -227,6 +227,9 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		// Each player draws 3 cards
 		m.table.deckSize -= len(msg.Seats) * 3
+		if m.gameConfig.MaxPlayers == 3 {
+			m.table.deckSize -= 1
+		}
 		m.table.cardsInPlay = []card{}
 		cmd = m.processSeats(msg.Seats)
 		cmds = append(cmds, cmd)
