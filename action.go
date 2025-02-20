@@ -137,6 +137,9 @@ func (a *action) UnmarshalJSON(b []byte) error {
 
 	to := findOcurrence(b, '{', 2, 1)
 	from := findOcurrence(b, '}', 2, -1)
+	if to == -1 || from == -1 {
+		return nil
+	}
 	payloadBytes := b[to:from]
 
 	switch a.Type {
