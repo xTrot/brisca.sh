@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"strings"
 	"time"
 	"unicode"
@@ -11,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish/bubbletea"
 )
@@ -170,38 +167,4 @@ func registerView(m registerModel) string {
 		m.registerStyle.Render(inside))
 	s += m.helpStyle.Render(m.help.View())
 	return s
-}
-
-func reallyNotMain() {
-
-	logFile := "debug.log"
-	envLogFile := os.Getenv("LOG_FILE")
-
-	if envLogFile != "" {
-		logFile = envLogFile
-	}
-
-	f, err := tea.LogToFile(logFile, "help")
-	if err != nil {
-		fmt.Println("Couldn't open a file for logging:", err)
-		os.Exit(1)
-	}
-	log.SetOutput(f)
-	defer f.Close() // nolint:errcheck
-
-	if os.Getenv("HELP_DEBUG") != "" {
-		log.SetLevel(log.DebugLevel)
-		log.Helper()
-		log.SetReportCaller(true)
-		log.Debug("Debug Started")
-	}
-
-	log.Info("Current log Level ", log.GetLevel())
-
-	p := tea.NewProgram(newModel(nil), tea.WithAltScreen())
-
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
-	}
-
 }
