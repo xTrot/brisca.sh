@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,12 +30,8 @@ var (
 )
 
 type listKeyMap struct {
-	toggleTitleBar   key.Binding
-	toggleStatusBar  key.Binding
-	togglePagination key.Binding
-	toggleHelpMenu   key.Binding
-	insertItem       key.Binding
-	joinGame         key.Binding
+	insertItem key.Binding
+	joinGame   key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -42,22 +39,6 @@ func newListKeyMap() *listKeyMap {
 		insertItem: key.NewBinding(
 			key.WithKeys("n"),
 			key.WithHelp("n", "new"),
-		),
-		toggleTitleBar: key.NewBinding(
-			key.WithKeys("T"),
-			key.WithHelp("T", "toggle title"),
-		),
-		toggleStatusBar: key.NewBinding(
-			key.WithKeys("S"),
-			key.WithHelp("S", "toggle status"),
-		),
-		togglePagination: key.NewBinding(
-			key.WithKeys("P"),
-			key.WithHelp("P", "toggle pagination"),
-		),
-		toggleHelpMenu: key.NewBinding(
-			key.WithKeys("H"),
-			key.WithHelp("H", "toggle help"),
 		),
 		joinGame: key.NewBinding(
 			key.WithKeys("j"),
@@ -95,15 +76,22 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 	delegate := newItemDelegate(delegateKeys, &lm)
 	gamesList := list.New(items, delegate, 0, 0)
 	gamesList.Styles.Title = titleStyle
+	gamesList.Title = "brisca.sh games:"
+	gamesList.SetStatusBarItemName("game", "games")
+	gamesList.Help = help.New()
 	gamesList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			listKeys.insertItem,
-			listKeys.toggleTitleBar,
-			listKeys.toggleStatusBar,
-			listKeys.togglePagination,
-			listKeys.toggleHelpMenu,
+			listKeys.joinGame,
 		}
 	}
+	gamesList.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			listKeys.insertItem,
+			listKeys.joinGame,
+		}
+	}
+	gamesList.KeyMap.Filter.SetHelp("/", "search")
 
 	lm.list = gamesList
 	lm.keys = listKeys
@@ -163,25 +151,6 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-
-		case key.Matches(msg, m.keys.toggleTitleBar):
-			v := !m.list.ShowTitle()
-			m.list.SetShowTitle(v)
-			m.list.SetShowFilter(v)
-			m.list.SetFilteringEnabled(v)
-			return m, nil
-
-		case key.Matches(msg, m.keys.toggleStatusBar):
-			m.list.SetShowStatusBar(!m.list.ShowStatusBar())
-			return m, nil
-
-		case key.Matches(msg, m.keys.togglePagination):
-			m.list.SetShowPagination(!m.list.ShowPagination())
-			return m, nil
-
-		case key.Matches(msg, m.keys.toggleHelpMenu):
-			m.list.SetShowHelp(!m.list.ShowHelp())
-			return m, nil
 
 		case key.Matches(msg, m.keys.insertItem):
 			mg := newMakeGame(m, m.userGlobal)
