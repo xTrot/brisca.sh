@@ -85,7 +85,7 @@ type gsModel struct {
 	boxes        [3][3]box
 	hand         []card
 	selectedCard int
-	actionCache  actionCache
+	actionCache  *actionCache
 	playerSeats  []playerModel
 	table        tableModel
 	gameConfig   gameConfigPayload
@@ -117,10 +117,11 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 	m.boxes[2][1].style = playerBoxStyle
 	m.boxes[2][2].style = emptyBoxStyle
 	m.selectedCard = 0
-	m.actionCache = actionCache{
+	m.actionCache = &actionCache{
 		actions:     []action{},
 		refreshTime: time.Millisecond * 200,
 		processed:   0,
+		done:        true,
 	}
 	m.playerSeats = []playerModel{
 		newPlayerModel(),
@@ -162,7 +163,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.userGlobal.sizeMsg = &msg
 		return m.updateWindow(msg)
 	case newActionCacheMsg:
-		m.actionCache = actionCache(msg)
+		m.actionCache = msg
 		cmd = m.Refresh()
 		cmds = append(cmds, cmd)
 		cmd = m.actionCache.ProcessAction()

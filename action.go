@@ -80,9 +80,11 @@ type innerAction struct {
 	Payload map[string]interface{} `json:"payload"`
 }
 
-func (a action) processAction() tea.Cmd {
+func (a action) processAction(ac *actionCache) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(a.slow)
+		ac.processed++
+		ac.done = true
 		return a.Payload
 	}
 }
