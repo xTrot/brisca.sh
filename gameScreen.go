@@ -54,9 +54,10 @@ type actionCache struct {
 	actions     []action
 	refreshTime time.Duration
 	processed   int
+	done        bool
 }
 
-type newActionCacheMsg actionCache
+type newActionCacheMsg *actionCache
 
 func (m *gsModel) Refresh() tea.Cmd {
 	return tea.Every(m.actionCache.refreshTime, func(t time.Time) tea.Msg {
@@ -70,9 +71,9 @@ func (m *gsModel) Refresh() tea.Cmd {
 }
 
 func (ac *actionCache) ProcessAction() tea.Cmd {
-	if ac.processed < len(ac.actions) {
-		cmd := ac.actions[ac.processed].processAction()
-		ac.processed++
+	if ac.processed < len(ac.actions) && ac.done {
+		ac.done = false
+		cmd := ac.actions[ac.processed].processAction(ac)
 		return cmd
 	} else {
 		return nil
@@ -83,7 +84,7 @@ type gsModel struct {
 	spinner      spinner.Model
 	index        int
 	boxes        [3][3]box
-	hand         []card
+	hand         *[]card
 	selectedCard int
 	actionCache  *actionCache
 	playerSeats  []playerModel
@@ -99,8 +100,8 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 	}
 	m.spinner = spinner.New()
 	var boxes [3][3]box
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
+	for i := range 3 {
+		for j := range 3 {
 			boxes[i][j] = box{
 				view: " ",
 			}
@@ -123,6 +124,7 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 		processed:   0,
 		done:        true,
 	}
+	m.hand = &[]card{}
 	m.playerSeats = []playerModel{
 		newPlayerModel(),
 		newPlayerModel(),
@@ -178,28 +180,28 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// 	lm := newLobby(m.userGlobal)
 		// 	return lm, lm.Init()
 		case "left":
-			handSize := len(m.hand)
+			handSize := len(*m.hand)
 			rawMove := m.selectedCard - 1
 			m.selectedCard = (rawMove%handSize + handSize) % handSize
 			return m, nil
 		case "right":
-			m.selectedCard = (m.selectedCard + 1) % len(m.hand)
+			m.selectedCard = (m.selectedCard + 1) % len(*m.hand)
 			return m, nil
 		case "enter":
 			cmd = m.playCard(m.selectedCard)
-			cmds = append(cmds, cmd, m.updateHand(true))
+			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
 		case "1":
 			cmd = m.playCard(0)
-			cmds = append(cmds, cmd, m.updateHand(true))
+			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
 		case "2":
 			cmd = m.playCard(1)
-			cmds = append(cmds, cmd, m.updateHand(true))
+			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
 		case "3":
 			cmd = m.playCard(2)
-			cmds = append(cmds, cmd, m.updateHand(true))
+			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
 
 		}
@@ -211,7 +213,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 	case updateHandMsg:
-		m.hand = msg.hand
+		m.hand = &msg.hand
 
 	case gameConfigPayload:
 		m.gameConfig = msg
@@ -244,6 +246,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case cardDrawnPayload:
 		m.table.deckSize--
 		m.playerSeats[msg.Seat].handSize++
+		cmds = append(cmds, m.updateHand(false))
 	case cardPlayedPayload:
 		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
 		m.playerSeats[msg.Seat].handSize--
@@ -256,7 +259,6 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.cardsInPlay = []card{}
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-		cmds = append(cmds, m.updateHand(false))
 	case gameWonPayload:
 		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
 		return ws, ws.Init()
@@ -389,8 +391,8 @@ func (m *gsModel) Next() {
 func (m *gsModel) handView() string {
 	var s string
 	s = "Hand:"
-	for i := range len(m.hand) {
-		card := m.hand[i]
+	for i := range *m.hand {
+		card := (*m.hand)[i]
 		if m.selectedCard == i {
 			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(renderCard(card)))
 		} else {
@@ -421,21 +423,25 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 	}
 }
 
-func (m *gsModel) playCard(i int) tea.Cmd {
+func (m *gsModel) playCard(index int) tea.Cmd {
 	if m.statusBar.isMyTurn() {
 		return func() tea.Msg {
-			handSize := len(m.hand)
-			if handSize <= i {
+			handSize := len(*m.hand)
+			if handSize <= index {
 				return nil
 			}
-			if len(m.hand) == 1 {
-				m.hand = []card{}
-			} else {
-				m.hand = append(m.hand[:i], m.hand[i+1:]...)
+			newHand := []card{}
+			if len(*m.hand) != 1 {
+				for i := range *m.hand {
+					if i == index {
+						continue
+					}
+					newHand = append(newHand, (*m.hand)[i])
+				}
 			}
-			index := handIndex{Index: i}
+			index := handIndex{Index: index}
 			m.userGlobal.rh.playCardRequest(index)
-			return nil
+			return updateHandMsg{newHand}
 		}
 	}
 	return nil
