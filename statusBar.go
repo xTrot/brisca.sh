@@ -16,12 +16,13 @@ var (
 )
 
 type statusBarModel struct {
-	timer      timer.Model
-	players    []playerModel
-	turn       int
-	mySeat     int
-	maxPlayers int
-	hasStarted bool
+	timer       timer.Model
+	players     []playerModel
+	turn        int
+	mySeat      int
+	maxPlayers  int
+	hasStarted  bool
+	cardsPlayed int
 }
 
 func newStatusBar(players []playerModel) statusBarModel {
@@ -66,10 +67,14 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 			log.Fatal(errMsg)
 			panic(errMsg)
 		}
-		m.turn = (m.turn + 1) % m.maxPlayers
+		m.cardsPlayed++
+		if m.cardsPlayed < m.maxPlayers {
+			m.turn = (m.turn + 1) % m.maxPlayers
+		}
 		m.timer = timer.New(TURN_LENGTH)
 		cmds = append(cmds, m.timer.Init())
 	case turnWonPayload:
+		m.cardsPlayed = 0
 		m.turn = msg.Seat
 		m.timer = timer.New(TURN_LENGTH)
 		cmds = append(cmds, m.timer.Init())
