@@ -96,7 +96,7 @@ rowLoop:
 			}
 			spString += renderCard(pm.scorePile[reverseStart-index])
 		}
-		spString += "\n  " // spacing
+		spString += "\n  " // paddingBothSides
 	}
 	if maxSP != 0 && spSize == maxSP {
 		spString = spString[:len(spString)-3] // remove last spacing
