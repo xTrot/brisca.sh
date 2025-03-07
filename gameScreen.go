@@ -214,6 +214,9 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case updateHandMsg:
 		m.hand = &msg.hand
+	case localUpdateHandMsg:
+		m.statusBar.iPlayed = true
+		m.hand = &msg.hand
 
 	case gameConfigPayload:
 		m.gameConfig = msg
@@ -412,6 +415,10 @@ type updateHandMsg struct {
 	hand []card
 }
 
+type localUpdateHandMsg struct {
+	hand []card
+}
+
 func (m *gsModel) updateHand(delay bool) tea.Cmd {
 	return func() tea.Msg {
 		if delay {
@@ -419,14 +426,12 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 		}
 		newHand := m.userGlobal.rh.handRequest()
 
-		return updateHandMsg{
-			hand: newHand,
-		}
+		return updateHandMsg{newHand}
 	}
 }
 
 func (m *gsModel) playCard(index int) tea.Cmd {
-	if m.statusBar.isMyTurn() {
+	if m.statusBar.isMyTurn() && m.statusBar.haventPlayed() {
 		return func() tea.Msg {
 			handSize := len(*m.hand)
 			if handSize <= index {
@@ -442,8 +447,10 @@ func (m *gsModel) playCard(index int) tea.Cmd {
 				}
 			}
 			index := handIndex{Index: index}
-			m.userGlobal.rh.playCardRequest(index)
-			return updateHandMsg{newHand}
+			if !m.userGlobal.rh.playCardRequest(index) {
+				return nil
+			}
+			return localUpdateHandMsg{newHand}
 		}
 	}
 	return nil

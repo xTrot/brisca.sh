@@ -23,6 +23,11 @@ type statusBarModel struct {
 	maxPlayers  int
 	hasStarted  bool
 	cardsPlayed int
+	iPlayed     bool
+}
+
+func (m statusBarModel) haventPlayed() bool {
+	return !m.iPlayed
 }
 
 func newStatusBar(players []playerModel) statusBarModel {
@@ -74,6 +79,7 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		m.timer = timer.New(TURN_LENGTH)
 		cmds = append(cmds, m.timer.Init())
 	case turnWonPayload:
+		m.iPlayed = false
 		m.cardsPlayed = 0
 		m.turn = msg.Seat
 		m.timer = timer.New(TURN_LENGTH)
