@@ -71,19 +71,17 @@ func (pm playerModel) Update(msg tea.Msg) (playerModel, tea.Cmd) {
 
 func (pm playerModel) View(x, y int) string {
 	const twoNewLines int = 2
-	const twoBorderlines int = 2
-	remainingX := x - twoBorderlines
-	remainingY := y - twoNewLines - twoBorderlines
+	remainingY := y - twoNewLines
 	return fmt.Sprintf("%s Score: %d\n  Score Pile:\n  %s",
-		pm.name, pm.score, pm.renderScorePile(remainingX, remainingY))
+		pm.name, pm.score, pm.renderScorePile(x, remainingY))
 }
 
 func (pm playerModel) renderScorePile(x, y int) string {
 	// I only have space for 5x4 cards
 	cardLength := 6
-	const spacingLenght int = 2
+	const paddingBothSides int = 8
 	maxRows := max(y, 0)
-	maxCols := max(x/cardLength-spacingLenght, 0)
+	maxCols := max((x-paddingBothSides)/cardLength, 0)
 	maxSP := maxRows * maxCols
 	spString := ""
 	spSize := len(pm.scorePile)
@@ -104,7 +102,7 @@ rowLoop:
 		spString = spString[:len(spString)-3] // remove last spacing
 	} else if spSize > maxSP {
 		spString = spString[:len(spString)-3] // remove last spacing
-		spString += " ..."
+		spString += "..."
 	}
 	return spString
 }
