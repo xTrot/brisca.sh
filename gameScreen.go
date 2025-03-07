@@ -353,10 +353,12 @@ func (m gsModel) View() string {
 
 	m.boxes[1][1].view = m.table.View()
 
-	for i := 0; i < m.gameConfig.MaxPlayers; i++ {
+	for i := range m.gameConfig.MaxPlayers {
 		x := m.playerSeats[i].boxX
 		y := m.playerSeats[i].boxY
-		m.boxes[x][y].view = m.playerSeats[i].View()
+		m.boxes[x][y].view = m.playerSeats[i].View(
+			m.boxes[x][y].style.GetWidth(), m.boxes[x][y].style.GetHeight(),
+		)
 		if m.statusBar.turn == i {
 			m.boxes[x][y].style = m.boxes[x][y].style.
 				BorderForeground(activeColor)
@@ -366,7 +368,7 @@ func (m gsModel) View() string {
 		}
 	}
 
-	for i := 0; i < len(m.boxes); i++ {
+	for i := range len(m.boxes) {
 		row := lipgloss.JoinHorizontal(lipgloss.Top,
 			m.boxes[i][0].style.Render(m.boxes[i][0].view),
 			m.boxes[i][1].style.Render(m.boxes[i][1].view),

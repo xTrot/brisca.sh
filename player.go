@@ -36,7 +36,7 @@ type playerModel struct {
 func (pm playerModel) UpdateScore() int {
 	pileSize := len(pm.scorePile)
 	score := 0
-	for i := 0; i < pileSize; i++ {
+	for i := range pileSize {
 		score += pm.scorePile[i].score
 	}
 	return score
@@ -65,26 +65,33 @@ func (pm playerModel) Init() tea.Cmd {
 	return nil
 }
 
-func (pm playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (pm playerModel) Update(msg tea.Msg) (playerModel, tea.Cmd) {
 	return pm, nil
 }
 
-func (pm playerModel) View() string {
-	return fmt.Sprintf("%s Score: %d\n  Score Pile:\n  %s", pm.name, pm.score, pm.renderScorePile())
+func (pm playerModel) View(x, y int) string {
+	const twoNewLines int = 2
+	const twoBorderlines int = 2
+	remainingX := x - twoBorderlines
+	remainingY := y - twoNewLines - twoBorderlines
+	return fmt.Sprintf("%s Score: %d\n  Score Pile:\n  %s",
+		pm.name, pm.score, pm.renderScorePile(remainingX, remainingY))
 }
 
-func (pm playerModel) renderScorePile() string {
+func (pm playerModel) renderScorePile(x, y int) string {
 	// I only have space for 5x4 cards
-	maxRows := 5
-	maxCols := 4
+	cardLength := 6
+	const spacingLenght int = 2
+	maxRows := max(y, 0)
+	maxCols := max(x/cardLength-spacingLenght, 0)
 	maxSP := maxRows * maxCols
 	spString := ""
 	spSize := len(pm.scorePile)
 	reverseStart := spSize - 1
 rowLoop:
-	for i := 0; i < maxRows; i++ {
+	for i := range maxRows {
 		indexBase := maxCols * i
-		for j := 0; j < maxCols; j++ {
+		for j := range maxCols {
 			index := indexBase + j
 			if !(index < spSize) {
 				break rowLoop // Breaks out of both loops
@@ -93,7 +100,7 @@ rowLoop:
 		}
 		spString += "\n  " // spacing
 	}
-	if spSize == maxSP {
+	if maxSP != 0 && spSize == maxSP {
 		spString = spString[:len(spString)-3] // remove last spacing
 	} else if spSize > maxSP {
 		spString = spString[:len(spString)-3] // remove last spacing
