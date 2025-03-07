@@ -94,7 +94,7 @@ rowLoop:
 			if !(index < spSize) {
 				break rowLoop // Breaks out of both loops
 			}
-			spString += renderCard(pm.scorePile[reverseStart-index])
+			spString += pm.scorePile[reverseStart-index].renderCard()
 		}
 		spString += "\n  " // paddingBothSides
 	}

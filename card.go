@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"strconv"
 	"strings"
@@ -39,6 +40,9 @@ type card struct {
 	num   int
 	val   int
 	score int
+
+	// The original string from the server
+	suitString string
 }
 
 func newCard(cardString string) card {
@@ -69,7 +73,13 @@ func newCard(cardString string) card {
 	card.val = CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX]
 	card.score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
 
+	card.suitString = suitString
+
 	return card
+}
+
+func (m *card) renderCard() string {
+	return fmt.Sprintf("[%s:%2d]", m.suit, m.num)
 }
 
 func randCard() card {

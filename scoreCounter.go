@@ -100,7 +100,7 @@ func (m scoreCounter) View() string {
 			s += "..........................\n" // Width 26 equal to else statement
 		} else {
 			s += fmt.Sprintf("%s Worth:%2d Tally:%3d\n", // Width 26 equal to if statement
-				renderCard(res.card), res.card.score, res.total)
+				res.card.renderCard(), res.card.score, res.total)
 		}
 	}
 

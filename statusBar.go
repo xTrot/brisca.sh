@@ -19,11 +19,16 @@ type statusBarModel struct {
 	timer       timer.Model
 	players     []playerModel
 	turn        int
-	mySeat      int
-	maxPlayers  int
 	hasStarted  bool
 	cardsPlayed int
 	iPlayed     bool
+	canSwap     bool
+
+	// config
+	mySeat         int
+	swapBottomCard bool
+	maxPlayers     int
+	swapCard       card
 }
 
 func (m statusBarModel) haventPlayed() bool {
@@ -65,6 +70,7 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		cmds = append(cmds, m.timer.Init())
 	case gameConfigPayload:
 		m.maxPlayers = msg.MaxPlayers
+		m.swapBottomCard = msg.SwapBottomCard
 	case cardPlayedPayload:
 		if m.maxPlayers == 0 {
 			errMsg := "m.maxPlayers must be set before " +
@@ -89,7 +95,7 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m statusBarModel) View() string {
+func (m *statusBarModel) View(hand *[]card) string {
 	if m.hasStarted {
 		var turnString string
 		if m.mySeat == m.turn {
@@ -97,7 +103,13 @@ func (m statusBarModel) View() string {
 		} else {
 			turnString = m.players[m.turn].name + "'s Turn"
 		}
-		return fmt.Sprintf("Status: %s, timer: %s", turnString, m.timer.View())
+
+		swapCardStatus := ""
+		if m.swapBottomCard && m.turn == m.mySeat && m.canSwap {
+			swapCardStatus = ", you can swap " + m.swapCard.renderCard() + " for the suit card"
+		}
+
+		return fmt.Sprintf("Status: %s, timer: %s%s", turnString, m.timer.View(), swapCardStatus)
 	} else {
 		return fmt.Sprintf("Status: Grace period, timer: %s", m.timer.View())
 	}

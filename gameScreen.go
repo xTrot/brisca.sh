@@ -214,9 +214,23 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case updateHandMsg:
 		m.hand = &msg.hand
+		if m.table.deckSize > 1 && slices.ContainsFunc(*m.hand, func(c card) bool {
+			return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
+		}) {
+			m.statusBar.canSwap = true
+		} else {
+			m.statusBar.canSwap = false
+		}
 	case localUpdateHandMsg:
 		m.statusBar.iPlayed = true
 		m.hand = &msg.hand
+		if m.table.deckSize > 1 && slices.ContainsFunc(*m.hand, func(c card) bool {
+			return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
+		}) {
+			m.statusBar.canSwap = true
+		} else {
+			m.statusBar.canSwap = false
+		}
 
 	case gameConfigPayload:
 		m.gameConfig = msg
@@ -240,6 +254,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.processSeats(msg.Seats)
 		cmds = append(cmds, cmd)
 	case bottomCardSelectedPayload:
+		m.statusBar.swapCard = newCard(msg.bottomCard.suitString + ":2")
 		m.table.suitCard = msg.bottomCard
 	case gracePeriodEndedPayload:
 		m.statusBar, cmd = m.statusBar.Update(msg)
@@ -380,7 +395,7 @@ func (m gsModel) View() string {
 		s = lipgloss.JoinVertical(lipgloss.Top, s, row)
 	}
 	s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
-	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View()))
+	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View(m.hand)))
 	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render("← →: select card      enter: play card"))
 	return s
 }
@@ -399,16 +414,12 @@ func (m *gsModel) handView() string {
 	for i := range *m.hand {
 		card := (*m.hand)[i]
 		if m.selectedCard == i {
-			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(renderCard(card)))
+			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(card.renderCard()))
 		} else {
-			s += fmt.Sprintf("%2d:%s", i+1, renderCard(card))
+			s += fmt.Sprintf("%2d:%s", i+1, card.renderCard())
 		}
 	}
 	return s
-}
-
-func renderCard(card card) string {
-	return fmt.Sprintf("[%s:%2d]", card.suit, card.num)
 }
 
 type updateHandMsg struct {
