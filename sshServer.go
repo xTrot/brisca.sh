@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	// _ "embed"
 	"errors"
 	"net"
 	"os"
@@ -16,16 +17,26 @@ import (
 	"github.com/charmbracelet/wish/activeterm"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
-const (
-	host = "localhost"
-	port = "23234"
-)
+type Environment struct {
+	Host  string `default:"localhost"`
+	Port  string `default:"23234"`
+	Debug bool   `default:"false"`
+}
 
 func main() {
+	var env Environment
+	err := envconfig.Process("brisca", &env)
+	if err != nil {
+		log.Fatal(err.Error())
+		panic("defaults loading failed.")
+	}
+
 	s, err := wish.NewServer(
-		wish.WithAddress(net.JoinHostPort(host, port)),
+		wish.WithAddress(net.JoinHostPort(env.Host, env.Port)),
 		wish.WithHostKeyPath(".ssh/id_ed25519"),
 		wish.WithMiddleware(
 			bubbletea.Middleware(teaHandler),
@@ -37,9 +48,18 @@ func main() {
 		log.Error("Could not start server", "error", err)
 	}
 
+	if env.Debug {
+		log.SetLevel(log.DebugLevel)
+		log.Helper()
+		log.SetReportCaller(true)
+		log.Debug("Debug Started")
+	}
+
+	log.Debug("Env:", "env", env)
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	log.Info("Starting SSH server", "host", host, "port", port)
+	log.Info("Starting SSH server", "host", env.Host, "port", env.Port)
 	go func() {
 		if err = s.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
 			log.Error("Could not start server", "error", err)

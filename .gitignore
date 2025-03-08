@@ -11,6 +11,9 @@
 # text editor
 .vscode
 
+# keys
+.ssh
+
 # debug files
 *.log
 
