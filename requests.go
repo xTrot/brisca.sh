@@ -526,3 +526,28 @@ func (m requestHandler) changeTeamRequest(spectator bool) bool {
 
 	return true
 }
+
+func (m requestHandler) swapBottomCardRequest() bool {
+	reader := bytes.NewReader([]byte{})
+
+	requestURL := fmt.Sprintf("%s/swapBottomCard", baseurl)
+
+	client := &http.Client{
+		Jar: m.jar,
+	}
+
+	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request:", "err", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		// log.Errorf("bad status making http request:", "res.StatusCode", res.StatusCode)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return true
+}

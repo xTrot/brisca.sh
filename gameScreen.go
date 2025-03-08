@@ -203,6 +203,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.playCard(2)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
+		case "s":
+			cmd = m.swapBottomCard()
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
 
 		}
 
@@ -214,9 +218,11 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case updateHandMsg:
 		m.hand = &msg.hand
-		if m.table.deckSize > 1 && slices.ContainsFunc(*m.hand, func(c card) bool {
-			return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
-		}) {
+		if m.table.deckSize > 1 && slices.ContainsFunc(
+			*m.hand, func(c card) bool {
+				return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
+			},
+		) {
 			m.statusBar.canSwap = true
 		} else {
 			m.statusBar.canSwap = false
@@ -261,6 +267,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case swapBottomCardPayload:
 		m.table.suitCard = newBottomCard(m.table.suitCard)
+		cmds = append(cmds, m.updateHand(false))
+		newTable, cmd := m.table.Update(msg)
+		m.table, _ = newTable.(tableModel)
+		cmds = append(cmds, cmd)
 	case cardDrawnPayload:
 		m.table.deckSize--
 		m.playerSeats[msg.Seat].handSize++
@@ -396,7 +406,7 @@ func (m gsModel) View() string {
 	}
 	s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
 	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View(m.hand)))
-	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render("← →: select card      enter: play card"))
+	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render("← →: select card      enter: play card      s: swap suit card"))
 	return s
 }
 
@@ -462,6 +472,18 @@ func (m *gsModel) playCard(index int) tea.Cmd {
 				return nil
 			}
 			return localUpdateHandMsg{newHand}
+		}
+	}
+	return nil
+}
+
+func (m *gsModel) swapBottomCard() tea.Cmd {
+	if m.statusBar.isMyTurn() && m.statusBar.canSwap {
+		return func() tea.Msg {
+			if !m.userGlobal.rh.swapBottomCardRequest() {
+				return nil
+			}
+			return nil
 		}
 	}
 	return nil
