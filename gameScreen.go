@@ -94,6 +94,8 @@ type gsModel struct {
 	statusBar    statusBarModel
 	userGlobal   *userGlobal
 	help         gameScreenHelpModel
+	cheatSheet   CheatSheetModel
+	showCheat    bool
 }
 
 func newGSModel(userGlobal *userGlobal) gsModel {
@@ -136,6 +138,7 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 	m.table = newTableModel()
 	m.statusBar = newStatusBar(m.playerSeats)
 	m.help = newGSHelp()
+	m.cheatSheet = NewCheatSheetModel()
 	return m
 }
 
@@ -158,11 +161,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case resizeMsg:
-		for i := 0; i < 3; i++ {
-			for j := 0; j < 3; j++ {
+		for i := range 3 {
+			for j := range 3 {
 				m.boxes[i][j].style = msg.boxes[i][j].style
 			}
 		}
+		m.cheatSheet.Style = msg.csStyle
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.userGlobal.sizeMsg = &msg
@@ -210,6 +214,9 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.swapBottomCard()
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
+		case key.Matches(msg, m.help.keys.Cheat):
+			m.showCheat = !m.showCheat
+
 			// case key.Matches(msg, m.help.keys.Help):
 			// 	m.help.help.ShowAll = !m.help.help.ShowAll
 
@@ -324,7 +331,8 @@ func (m gsModel) processSeats(seats []seat) tea.Cmd {
 }
 
 type resizeMsg struct {
-	boxes [3][3]box
+	boxes   [3][3]box
+	csStyle lipgloss.Style
 }
 
 func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
@@ -363,40 +371,53 @@ func (m gsModel) updateWindow(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 		// Blank Bottom Right
 		m.boxes[2][2].style = m.boxes[2][2].style.Width(thirdWidth).Height(thirdHeight)
 
-		return resizeMsg{boxes: m.boxes}
+		wholeWidth = max(msg.Width, windowWidthMin) - 2    // 2 borders, 2?
+		wholeHeight = max(msg.Height, windowHighttMin) - 3 // 2 borders, 1 help bar
+		m.cheatSheet.Style = m.cheatSheet.Style.Width(wholeWidth).Height(wholeHeight)
+
+		return resizeMsg{
+			boxes:   m.boxes,
+			csStyle: m.cheatSheet.Style,
+		}
 	}
 }
 
 func (m gsModel) View() string {
 	var s string
 
-	m.boxes[1][1].view = m.table.View()
-
-	for i := range m.gameConfig.MaxPlayers {
-		x := m.playerSeats[i].boxX
-		y := m.playerSeats[i].boxY
-		m.boxes[x][y].view = m.playerSeats[i].View(
-			m.boxes[x][y].style.GetWidth(), m.boxes[x][y].style.GetHeight(),
+	if m.showCheat {
+		s = lipgloss.JoinVertical(lipgloss.Top, s,
+			m.cheatSheet.Style.Render(m.cheatSheet.View()),
 		)
-		if m.statusBar.turn == i {
-			m.boxes[x][y].style = m.boxes[x][y].style.
-				BorderForeground(activeColor)
-		} else {
-			m.boxes[x][y].style = m.boxes[x][y].style.
-				BorderForeground(inactiveColor)
+	} else {
+		m.boxes[1][1].view = m.table.View()
+
+		for i := range m.gameConfig.MaxPlayers {
+			x := m.playerSeats[i].boxX
+			y := m.playerSeats[i].boxY
+			m.boxes[x][y].view = m.playerSeats[i].View(
+				m.boxes[x][y].style.GetWidth(), m.boxes[x][y].style.GetHeight(),
+			)
+			if m.statusBar.turn == i {
+				m.boxes[x][y].style = m.boxes[x][y].style.
+					BorderForeground(activeColor)
+			} else {
+				m.boxes[x][y].style = m.boxes[x][y].style.
+					BorderForeground(inactiveColor)
+			}
 		}
-	}
 
-	for i := range len(m.boxes) {
-		row := lipgloss.JoinHorizontal(lipgloss.Top,
-			m.boxes[i][0].style.Render(m.boxes[i][0].view),
-			m.boxes[i][1].style.Render(m.boxes[i][1].view),
-			m.boxes[i][2].style.Render(m.boxes[i][2].view),
-		)
-		s = lipgloss.JoinVertical(lipgloss.Top, s, row)
+		for i := range len(m.boxes) {
+			row := lipgloss.JoinHorizontal(lipgloss.Top,
+				m.boxes[i][0].style.Render(m.boxes[i][0].view),
+				m.boxes[i][1].style.Render(m.boxes[i][1].view),
+				m.boxes[i][2].style.Render(m.boxes[i][2].view),
+			)
+			s = lipgloss.JoinVertical(lipgloss.Top, s, row)
+		}
+		s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
+		s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View(m.hand)))
 	}
-	s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
-	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View(m.hand)))
 	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render(m.help.View()))
 	return s
 }

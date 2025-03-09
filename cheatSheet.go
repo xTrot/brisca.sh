@@ -5,15 +5,24 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	style = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240"))
 )
 
 type CheatSheetModel struct {
-	Text string
+	Text  string
+	Style lipgloss.Style
 }
 
 func NewCheatSheetModel() CheatSheetModel {
 	return CheatSheetModel{
-		Text: CheatSheet,
+		Text:  CheatSheet,
+		Style: style,
 	}
 }
 
@@ -26,6 +35,7 @@ func (m CheatSheetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m CheatSheetModel) View() string {
+	glamour.WithWordWrap(m.Style.GetWidth())
 	out, err := glamour.Render(m.Text, "dracula")
 	if err != nil {
 		log.Fatal(err.Error())

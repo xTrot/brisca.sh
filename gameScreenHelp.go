@@ -16,6 +16,7 @@ type gameScreenKeyMap struct {
 	Two      key.Binding
 	Three    key.Binding
 	Swap     key.Binding
+	Cheat    key.Binding
 	Help     key.Binding
 	Quit     key.Binding
 	showSwap bool
@@ -25,9 +26,9 @@ type gameScreenKeyMap struct {
 // of the key.Map interface.
 func (k gameScreenKeyMap) ShortHelp() []key.Binding {
 	if k.showSwap {
-		return []key.Binding{k.Left, k.Right, k.Enter, k.Swap}
+		return []key.Binding{k.Left, k.Right, k.Enter, k.Cheat, k.Swap}
 	} else {
-		return []key.Binding{k.Left, k.Right, k.Enter}
+		return []key.Binding{k.Left, k.Right, k.Enter, k.Cheat}
 	}
 }
 
@@ -35,7 +36,7 @@ func (k gameScreenKeyMap) ShortHelp() []key.Binding {
 // key.Map interface.
 func (k gameScreenKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Left, k.Right, k.Enter, k.One, k.Two, k.Three, k.Swap, k.Help, k.Quit}, // second column
+		{k.Left, k.Right, k.Enter, k.One, k.Two, k.Three, k.Swap, k.Cheat, k.Help, k.Quit}, // second column
 	}
 }
 
@@ -67,6 +68,10 @@ var gameScreenKeys = gameScreenKeyMap{
 	Swap: key.NewBinding(
 		key.WithKeys("s"),
 		key.WithHelp("s", "swap suit card"),
+	),
+	Cheat: key.NewBinding(
+		key.WithKeys("H"),
+		key.WithHelp("H", "cheatsheet"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
