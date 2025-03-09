@@ -94,7 +94,7 @@ type gsModel struct {
 	statusBar    statusBarModel
 	userGlobal   *userGlobal
 	help         gameScreenHelpModel
-	cheatSheet   CheatSheetModel
+	cheatSheet   MarkdownModel
 	showCheat    bool
 }
 

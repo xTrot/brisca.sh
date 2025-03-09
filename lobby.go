@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 const (
@@ -33,6 +32,7 @@ type listKeyMap struct {
 	insertItem key.Binding
 	joinGame   key.Binding
 	choose     key.Binding
+	help       key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -49,6 +49,10 @@ func newListKeyMap() *listKeyMap {
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "choose"),
 		),
+		help: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("H", "how to play"),
+		),
 	}
 }
 
@@ -58,6 +62,8 @@ type lobbyModel struct {
 	delegateKeys *delegateKeyMap
 	lastUpdate   time.Time
 	userGlobal   *userGlobal
+	fullHelp     MarkdownModel
+	showFH       bool
 }
 
 type itemsMsg struct {
@@ -89,6 +95,7 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 			listKeys.insertItem,
 			listKeys.joinGame,
 			listKeys.choose,
+			listKeys.help,
 		}
 	}
 	gamesList.AdditionalShortHelpKeys = func() []key.Binding {
@@ -96,6 +103,7 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 			listKeys.insertItem,
 			listKeys.joinGame,
 			listKeys.choose,
+			listKeys.help,
 		}
 	}
 	gamesList.KeyMap.Filter.SetHelp("/", "search")
@@ -105,6 +113,7 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 	lm.delegateKeys = delegateKeys
 	lm.lastUpdate = time.Now()
 	lm.userGlobal = userGlobal
+	lm.fullHelp = NewFullHelpModel()
 
 	return lm
 }
@@ -149,7 +158,12 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.userGlobal.sizeMsg = &msg
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
-		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
+		var model tea.Model
+		model, cmd = m.fullHelp.Update(msg)
+		if fullHelp, ok := model.(MarkdownModel); ok {
+			m.fullHelp = fullHelp
+		}
+		cmds = append(cmds, cmd)
 
 	case tea.KeyMsg:
 		// Don't match any of the keys below if we're actively filtering.
@@ -158,11 +172,28 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
+		case key.Matches(msg, m.keys.help):
+			m.showFH = !m.showFH
+		default:
+			if m.showFH {
+				var model tea.Model
+				model, cmd = m.fullHelp.Update(msg)
+				if fullHelp, ok := model.(MarkdownModel); ok {
+					m.fullHelp = fullHelp
+				}
+				cmds = append(cmds, cmd)
+				return m, tea.Batch(cmds...)
+			}
+		}
 
+		if m.showFH {
+			break
+		}
+
+		switch {
 		case key.Matches(msg, m.keys.insertItem):
 			mg := newMakeGame(m, m.userGlobal)
 			return mg, mg.Init()
-
 		case key.Matches(msg, m.keys.joinGame):
 			jg := newJoinGame(m, m.userGlobal)
 			return jg, jg.Init()
@@ -178,6 +209,9 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (lm lobbyModel) View() string {
+	if lm.showFH {
+		return lm.fullHelp.View()
+	}
 	return docStyle.Render(lm.list.View())
 }
 
