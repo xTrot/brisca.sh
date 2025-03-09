@@ -12,7 +12,9 @@ require (
 )
 
 require (
+	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
+	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/charmbracelet/keygen v0.5.1 // indirect
 	github.com/charmbracelet/x/conpty v0.1.0 // indirect
 	github.com/charmbracelet/x/errors v0.0.0-20240508181413-e8d8b6e2de86 // indirect
@@ -20,8 +22,16 @@ require (
 	github.com/charmbracelet/x/termios v0.1.0 // indirect
 	github.com/charmbracelet/x/windows v0.2.0 // indirect
 	github.com/creack/pty v1.1.21 // indirect
+	github.com/dlclark/regexp2 v1.11.0 // indirect
+	github.com/gorilla/css v1.0.1 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
+	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	github.com/yuin/goldmark v1.7.4 // indirect
+	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 )
 
 require (
@@ -39,6 +49,7 @@ require (
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/bubbles v0.20.0
+	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/huh/spinner v0.0.0-20241108235012-6092b3ba5e33
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
