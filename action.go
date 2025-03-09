@@ -193,7 +193,7 @@ func (a *action) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		a.Payload = turnWon
-		a.slow = time.Second // must be faster than below
+		a.slow = time.Second
 	case "GAME_WON":
 		gameWon := gameWonPayload{}
 		err := json.Unmarshal(payloadBytes, &gameWon)
@@ -201,7 +201,7 @@ func (a *action) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		a.Payload = gameWon
-		a.slow = time.Second * 2 // must be slower than above
+		a.slow = time.Second
 	default:
 		log.Errorf("action.UnmarshalJSON: unexpected type; type = %s)", a.Type)
 	}
