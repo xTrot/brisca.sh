@@ -32,6 +32,7 @@ var (
 type listKeyMap struct {
 	insertItem key.Binding
 	joinGame   key.Binding
+	choose     key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -43,6 +44,10 @@ func newListKeyMap() *listKeyMap {
 		joinGame: key.NewBinding(
 			key.WithKeys("j"),
 			key.WithHelp("j", "join game"),
+		),
+		choose: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "choose"),
 		),
 	}
 }
@@ -83,12 +88,14 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 		return []key.Binding{
 			listKeys.insertItem,
 			listKeys.joinGame,
+			listKeys.choose,
 		}
 	}
 	gamesList.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			listKeys.insertItem,
 			listKeys.joinGame,
+			listKeys.choose,
 		}
 	}
 	gamesList.KeyMap.Filter.SetHelp("/", "search")

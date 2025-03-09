@@ -5,6 +5,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
@@ -92,6 +93,7 @@ type gsModel struct {
 	gameConfig   gameConfigPayload
 	statusBar    statusBarModel
 	userGlobal   *userGlobal
+	help         gameScreenHelpModel
 }
 
 func newGSModel(userGlobal *userGlobal) gsModel {
@@ -133,6 +135,7 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 	}
 	m.table = newTableModel()
 	m.statusBar = newStatusBar(m.playerSeats)
+	m.help = newGSHelp()
 	return m
 }
 
@@ -171,42 +174,44 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.actionCache.ProcessAction()
 		cmds = append(cmds, cmd)
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
+		switch {
+		case key.Matches(msg, m.help.keys.Quit):
 			m.userGlobal.rh.leaveGameRequest()
 			return m, tea.Quit
 		// case "q":
 		// 	m.userGlobal.rh.leaveGameRequest()
 		// 	lm := newLobby(m.userGlobal)
 		// 	return lm, lm.Init()
-		case "left":
+		case key.Matches(msg, m.help.keys.Left):
 			handSize := len(*m.hand)
 			rawMove := m.selectedCard - 1
 			m.selectedCard = (rawMove%handSize + handSize) % handSize
 			return m, nil
-		case "right":
+		case key.Matches(msg, m.help.keys.Right):
 			m.selectedCard = (m.selectedCard + 1) % len(*m.hand)
 			return m, nil
-		case "enter":
+		case key.Matches(msg, m.help.keys.Enter):
 			cmd = m.playCard(m.selectedCard)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
-		case "1":
+		case key.Matches(msg, m.help.keys.One):
 			cmd = m.playCard(0)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
-		case "2":
+		case key.Matches(msg, m.help.keys.Two):
 			cmd = m.playCard(1)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
-		case "3":
+		case key.Matches(msg, m.help.keys.Three):
 			cmd = m.playCard(2)
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
-		case "s":
+		case key.Matches(msg, m.help.keys.Swap):
 			cmd = m.swapBottomCard()
 			cmds = append(cmds, cmd)
 			return m, tea.Batch(cmds...)
+			// case key.Matches(msg, m.help.keys.Help):
+			// 	m.help.help.ShowAll = !m.help.help.ShowAll
 
 		}
 
@@ -224,8 +229,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			},
 		) {
 			m.statusBar.canSwap = true
+			m.help.keys.showSwap = true
 		} else {
 			m.statusBar.canSwap = false
+			m.help.keys.showSwap = false
 		}
 	case localUpdateHandMsg:
 		m.statusBar.iPlayed = true
@@ -234,8 +241,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
 		}) {
 			m.statusBar.canSwap = true
+			m.help.keys.showSwap = true
 		} else {
 			m.statusBar.canSwap = false
+			m.help.keys.showSwap = false
 		}
 
 	case gameConfigPayload:
@@ -406,7 +415,7 @@ func (m gsModel) View() string {
 	}
 	s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
 	s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View(m.hand)))
-	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render("← →: select card      enter: play card      s: swap suit card"))
+	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render(m.help.View()))
 	return s
 }
 
