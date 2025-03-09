@@ -223,29 +223,11 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case updateHandMsg:
 		m.hand = &msg.hand
-		if m.table.deckSize > 1 && slices.ContainsFunc(
-			*m.hand, func(c card) bool {
-				return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
-			},
-		) {
-			m.statusBar.canSwap = true
-			m.help.keys.showSwap = true
-		} else {
-			m.statusBar.canSwap = false
-			m.help.keys.showSwap = false
-		}
+		m.swapCheck()
 	case localUpdateHandMsg:
 		m.statusBar.iPlayed = true
 		m.hand = &msg.hand
-		if m.table.deckSize > 1 && slices.ContainsFunc(*m.hand, func(c card) bool {
-			return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
-		}) {
-			m.statusBar.canSwap = true
-			m.help.keys.showSwap = true
-		} else {
-			m.statusBar.canSwap = false
-			m.help.keys.showSwap = false
-		}
+		m.swapCheck()
 
 	case gameConfigPayload:
 		m.gameConfig = msg
@@ -496,4 +478,16 @@ func (m *gsModel) swapBottomCard() tea.Cmd {
 		}
 	}
 	return nil
+}
+
+func (m *gsModel) swapCheck() {
+	if m.table.deckSize > 1 && slices.ContainsFunc(*m.hand, func(c card) bool {
+		return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
+	}) {
+		m.statusBar.canSwap = true
+		m.help.keys.showSwap = true
+	} else {
+		m.statusBar.canSwap = false
+		m.help.keys.showSwap = false
+	}
 }
