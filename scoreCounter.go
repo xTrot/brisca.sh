@@ -58,7 +58,16 @@ func (m scoreCounter) Init() tea.Cmd {
 			m.runPretendCount(m.cards[m.counted]),
 		)
 	} else {
-		return m.spinner.Tick
+		return tea.Batch(
+			m.spinner.Tick,
+			m.noCards(),
+		)
+	}
+}
+
+func (m scoreCounter) noCards() tea.Cmd {
+	return func() tea.Msg {
+		return doneCounting{m.index}
 	}
 }
 
