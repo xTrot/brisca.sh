@@ -5,8 +5,8 @@ import (
 )
 
 var (
-	//go:embed embededFiles/cheatSheet.md
+	//go:embed embeddedFiles/cheatSheet.md
 	CheatSheet string
-	//go:embed embededFiles/fullHelp.md
+	//go:embed embeddedFiles/fullHelp.md
 	FullHelp string
 )
