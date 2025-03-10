@@ -28,7 +28,7 @@ func newMakeGame(nv tea.Model, userGlobal *userGlobal) makeGameModel {
 					Options(huh.NewOptions(
 						"public",
 						"private",
-						// "solo",
+						"solo",
 					)...).
 					Title("Choose a game type:"),
 
