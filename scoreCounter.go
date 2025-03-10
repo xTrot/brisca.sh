@@ -52,10 +52,14 @@ func newScoreCounter(index int, name string, cards []card) scoreCounter {
 }
 
 func (m scoreCounter) Init() tea.Cmd {
-	return tea.Batch(
-		m.spinner.Tick,
-		m.runPretendCount(m.cards[m.counted]),
-	)
+	if len(m.cards) > 0 {
+		return tea.Batch(
+			m.spinner.Tick,
+			m.runPretendCount(m.cards[m.counted]),
+		)
+	} else {
+		return m.spinner.Tick
+	}
 }
 
 type stopSpinnerMsg tea.Msg
