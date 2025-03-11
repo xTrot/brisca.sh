@@ -106,7 +106,7 @@ func (m *statusBarModel) View(hand *[]card) string {
 
 		swapCardStatus := ""
 		if m.swapBottomCard && m.turn == m.mySeat && m.canSwap {
-			swapCardStatus = ", you can swap " + m.swapCard.renderCard() + " for the suit card"
+			swapCardStatus = ", you can swap " + m.swapCard.renderCard() + " for the life card"
 		}
 
 		return fmt.Sprintf("Status: %s, timer: %s%s", turnString, m.timer.View(), swapCardStatus)

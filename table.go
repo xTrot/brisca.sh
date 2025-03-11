@@ -8,29 +8,29 @@ import (
 )
 
 var (
-	suitCardSwappedStyle = lipgloss.NewStyle().
+	bottomCardSwappedStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("16")).
 		Background(lipgloss.Color("226"))
 )
 
 type tableModel struct {
 	deckSize    int
-	suitCard    card
+	bottomCard  card
 	cardsInPlay []card
 
-	suitCardStyle lipgloss.Style
+	bottomCardStyle lipgloss.Style
 }
 
 func newTableModel() tableModel {
 	return tableModel{
-		deckSize: 40,
-		suitCard: newCard("BASTO:3"),
+		deckSize:   40,
+		bottomCard: newCard("BASTO:3"),
 		cardsInPlay: []card{
 			newCard("ESPADA:1"),
 			newCard("ORO:5"),
 			newCard("COPA:10"),
 		},
-		suitCardStyle: lipgloss.NewStyle(),
+		bottomCardStyle: lipgloss.NewStyle(),
 	}
 }
 
@@ -42,7 +42,7 @@ func (tm tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg.(type) {
 	case swapBottomCardPayload:
-		tm.suitCardStyle = suitCardSwappedStyle
+		tm.bottomCardStyle = bottomCardSwappedStyle
 	}
 
 	return tm, nil
@@ -57,9 +57,9 @@ func (tm tableModel) renderCardsInPlay() string {
 }
 
 func (tm tableModel) View() string {
-	return fmt.Sprintf("Table:\n  Deck: %d\n  Suit Card: %s\n\n  In Play:\n  %s",
+	return fmt.Sprintf("Table:\n  Deck: %d\n  Life Card: %s\n\n  In Play:\n  %s",
 		tm.deckSize,
-		tm.suitCardStyle.Render(tm.suitCard.renderCard()),
+		tm.bottomCardStyle.Render(tm.bottomCard.renderCard()),
 		tm.renderCardsInPlay(),
 	)
 }

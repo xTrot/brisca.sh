@@ -67,7 +67,7 @@ var gameScreenKeys = gameScreenKeyMap{
 	),
 	Swap: key.NewBinding(
 		key.WithKeys("s"),
-		key.WithHelp("s", "swap suit card"),
+		key.WithHelp("s", "swap life card"),
 	),
 	Cheat: key.NewBinding(
 		key.WithKeys("H"),

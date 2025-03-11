@@ -259,12 +259,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case bottomCardSelectedPayload:
 		m.statusBar.swapCard = newCard(msg.bottomCard.suitString + ":2")
-		m.table.suitCard = msg.bottomCard
+		m.table.bottomCard = msg.bottomCard
 	case gracePeriodEndedPayload:
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 	case swapBottomCardPayload:
-		m.table.suitCard = newBottomCard(m.table.suitCard)
+		m.table.bottomCard = newBottomCard(m.table.bottomCard)
 		cmds = append(cmds, m.updateHand(false))
 		newTable, cmd := m.table.Update(msg)
 		m.table, _ = newTable.(tableModel)
@@ -291,8 +291,11 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case seatsMsg:
 		m.playerSeats = msg
+		for i := range msg {
+			m.boxes[msg[i].boxX][msg[i].boxY].style = playerBoxStyle
+		}
 		m.statusBar, cmd = m.statusBar.Update(msg)
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, cmd, m.userGlobal.LastWindowSizeReplay())
 	case mySeat:
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
@@ -308,7 +311,7 @@ type seatsMsg []playerModel
 func (m gsModel) processSeats(seats []seat) tea.Cmd {
 	return func() tea.Msg {
 		var seatsMsg seatsMsg
-		for i := 0; i < len(seats); i++ {
+		for i := range seats {
 			player := newPlayerModelFromSeat(seats[i])
 			// This part only works because case mySeat: happens first then seatsMsg
 			adjustedSeat := (i - m.statusBar.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
