@@ -15,6 +15,24 @@ type joinGameModel struct {
 	nextView   tea.Model
 	userGlobal *userGlobal
 	gameId     *string
+	replay     bool
+}
+
+func newReplayGame(nv tea.Model, userGlobal *userGlobal) joinGameModel {
+	var gameId string
+	return joinGameModel{
+		gameId: &gameId,
+		form: huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Title("What's the UUID of the Game you want to replay?").
+					Value(&gameId),
+			),
+		),
+		nextView:   nv,
+		userGlobal: userGlobal,
+		replay:     true,
+	}
 }
 
 func newJoinGame(nv tea.Model, userGlobal *userGlobal) joinGameModel {
@@ -60,6 +78,17 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		if m.replay {
+			replay := m.userGlobal.rh.replayRequest(gameId)
+
+			if replay != nil {
+				rgs := newReplayGSModel(m.userGlobal, replay)
+				return rgs, rgs.Init()
+			} else {
+				return m.nextView, m.nextView.Init()
+			}
 		}
 
 		joined := m.userGlobal.rh.joinGameRequest(gameId)

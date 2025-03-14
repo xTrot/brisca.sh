@@ -71,7 +71,7 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 	case gameConfigPayload:
 		m.maxPlayers = msg.MaxPlayers
 		m.swapBottomCard = msg.SwapBottomCard
-	case cardPlayedPayload:
+	case turnSwitchPayload:
 		if m.maxPlayers == 0 {
 			errMsg := "m.maxPlayers must be set before " +
 				"case cardPlayedPayload: in statusBarModel.Update"

@@ -551,3 +551,36 @@ func (m requestHandler) swapBottomCardRequest() bool {
 
 	return true
 }
+
+func (m requestHandler) replayRequest(gameId gameId) []action {
+	requestURL := fmt.Sprintf("%s/replay?gameId=%s", baseurl, gameId.GameId)
+
+	client := &http.Client{
+		Jar: m.jar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error("error making http request: ", err)
+		return nil
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: ", res.StatusCode)
+		return nil
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		return nil
+	}
+
+	var actions []action
+	json.Unmarshal([]byte(body.String()), &actions)
+
+	return actions
+}

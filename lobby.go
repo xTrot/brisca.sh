@@ -31,6 +31,7 @@ var (
 type listKeyMap struct {
 	insertItem key.Binding
 	joinGame   key.Binding
+	replayGame key.Binding
 	choose     key.Binding
 	help       key.Binding
 }
@@ -44,6 +45,10 @@ func newListKeyMap() *listKeyMap {
 		joinGame: key.NewBinding(
 			key.WithKeys("j"),
 			key.WithHelp("j", "join game"),
+		),
+		replayGame: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("r", "replay game"),
 		),
 		choose: key.NewBinding(
 			key.WithKeys("enter"),
@@ -94,6 +99,7 @@ func newLobby(userGlobal *userGlobal) lobbyModel {
 		return []key.Binding{
 			listKeys.insertItem,
 			listKeys.joinGame,
+			listKeys.replayGame,
 			listKeys.choose,
 			listKeys.help,
 		}
@@ -197,6 +203,9 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.joinGame):
 			jg := newJoinGame(m, m.userGlobal)
 			return jg, jg.Init()
+		case key.Matches(msg, m.keys.replayGame):
+			rg := newReplayGame(m, m.userGlobal)
+			return rg, rg.Init()
 		}
 	}
 

@@ -62,11 +62,13 @@ type newActionCacheMsg *actionCache
 
 func (m *gsModel) Refresh() tea.Cmd {
 	return tea.Every(m.actionCache.refreshTime, func(t time.Time) tea.Msg {
-		fetched := m.userGlobal.rh.actionsRequest()
-		if len(fetched) != 0 {
-			log.Debug("Actions fetched: ", "fetched", fetched)
+		if !m.replaying {
+			fetched := m.userGlobal.rh.actionsRequest()
+			if len(fetched) != 0 {
+				log.Debug("Actions fetched: ", "fetched", fetched)
+			}
+			m.actionCache.actions = append(m.actionCache.actions, fetched...)
 		}
-		m.actionCache.actions = append(m.actionCache.actions, fetched...)
 		return newActionCacheMsg(m.actionCache)
 	})
 }
@@ -79,6 +81,10 @@ func (ac *actionCache) ProcessAction() tea.Cmd {
 	} else {
 		return nil
 	}
+}
+
+func (ac *actionCache) injectAction(fakeAction action) {
+	ac.actions = slices.Insert(ac.actions, ac.processed, fakeAction)
 }
 
 type gsModel struct {
@@ -96,6 +102,16 @@ type gsModel struct {
 	help         gameScreenHelpModel
 	cheatSheet   MarkdownModel
 	showCheat    bool
+	replaying    bool
+}
+
+func newReplayGSModel(userGlobal *userGlobal, actions []action) gsModel {
+	m := newGSModel(userGlobal)
+
+	m.actionCache.actions = actions
+	m.replaying = true
+
+	return m
 }
 
 func newGSModel(userGlobal *userGlobal) gsModel {
@@ -274,8 +290,11 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playerSeats[msg.Seat].handSize++
 		cmds = append(cmds, m.updateHand(false))
 	case cardPlayedPayload:
+		turnSwitch := action{slow: time.Millisecond * 200, Payload: turnSwitchPayload{}}
+		m.actionCache.injectAction(turnSwitch)
 		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
 		m.playerSeats[msg.Seat].handSize--
+	case turnSwitchPayload:
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 	case turnWonPayload:
@@ -299,8 +318,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case mySeat:
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-		cmd := m.Refresh()
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, m.Refresh())
 	}
 
 	return m, tea.Batch(cmds...)
@@ -459,6 +477,9 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 	return func() tea.Msg {
 		if delay {
 			time.Sleep(time.Millisecond * 500)
+		}
+		if m.replaying {
+			return nil
 		}
 		newHand := m.userGlobal.rh.handRequest()
 
