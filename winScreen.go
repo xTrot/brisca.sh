@@ -72,10 +72,17 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 		scSize = 3
 		winString = players[gameWon.Seat].name + " won!!!"
 	case 4:
+		teamAString := fmt.Sprintf("Team A:\n %s and %s", players[0].name, players[2].name)
+		teamBString := fmt.Sprintf("Team B:\n %s and %s", players[1].name, players[3].name)
 		firstScoreCounter = newScoreCounter(0, "Team A", append(players[0].scorePile, players[2].scorePile...))
 		secondScoreCounter = newScoreCounter(1, "Team B", append(players[1].scorePile, players[3].scorePile...))
 		scSize = 2
-		winString = "Team " + gameWon.Team + " won!!!"
+		switch gameWon.Team {
+		case "A":
+			winString = teamAString + " won!!!"
+		case "B":
+			winString = teamBString + " won!!!"
+		}
 	default:
 		panic(fmt.Sprintf("gameConfig.MaxPlayers not 2-4, gameConfig=%v", gc))
 	}
