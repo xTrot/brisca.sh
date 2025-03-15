@@ -282,8 +282,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case swapBottomCardPayload:
 		m.table.bottomCard = newBottomCard(m.table.bottomCard)
 		cmds = append(cmds, m.updateHand(false))
-		newTable, cmd := m.table.Update(msg)
-		m.table, _ = newTable.(tableModel)
+		m.table, cmd = m.table.Update(msg)
 		cmds = append(cmds, cmd)
 	case cardDrawnPayload:
 		m.table.deckSize--
@@ -411,7 +410,7 @@ func (m gsModel) View() string {
 			m.cheatSheet.Style.Render(m.cheatSheet.View()),
 		)
 	} else {
-		m.boxes[1][1].view = m.table.View()
+		m.boxes[1][1].view = m.table.View(m.boxes[1][1].style.GetWidth())
 
 		for i := range m.gameConfig.MaxPlayers {
 			x := m.playerSeats[i].boxX

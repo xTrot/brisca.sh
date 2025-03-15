@@ -38,7 +38,7 @@ func (tm tableModel) Init() tea.Cmd {
 	return nil
 }
 
-func (tm tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (tm tableModel) Update(msg tea.Msg) (tableModel, tea.Cmd) {
 
 	switch msg.(type) {
 	case swapBottomCardPayload:
@@ -48,18 +48,36 @@ func (tm tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return tm, nil
 }
 
-func (tm tableModel) renderCardsInPlay() string {
+func (tm tableModel) renderCardsInPlay(width int) string {
+	cardLength := 7
+	const paddingBothSides int = 4
+	maxRows := 2
+	maxCols := max((width-paddingBothSides)/cardLength-1, 0)
+	maxCIP := maxRows * maxCols
 	cip := ""
-	for i := range len(tm.cardsInPlay) {
-		cip += fmt.Sprintf("%s ", tm.cardsInPlay[i].renderCard())
+	cipSize := len(tm.cardsInPlay)
+rowLoop:
+	for i := range maxRows {
+		indexBase := maxCols * i
+		for j := range maxCols {
+			index := indexBase + j
+			if !(index < cipSize) {
+				break rowLoop
+			}
+			cip += fmt.Sprintf("%s ", tm.cardsInPlay[index].renderCard())
+		}
+		cip += "\n  "
+	}
+	if cipSize >= maxCIP {
+		cip = cip[:len(cip)-3]
 	}
 	return cip
 }
 
-func (tm tableModel) View() string {
+func (tm tableModel) View(width int) string {
 	return fmt.Sprintf("Table:\n  Deck: %d\n  Life Card: %s\n\n  In Play:\n  %s",
 		tm.deckSize,
 		tm.bottomCardStyle.Render(tm.bottomCard.renderCard()),
-		tm.renderCardsInPlay(),
+		tm.renderCardsInPlay(width),
 	)
 }

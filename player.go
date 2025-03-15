@@ -77,7 +77,6 @@ func (pm playerModel) View(x, y int) string {
 }
 
 func (pm playerModel) renderScorePile(x, y int) string {
-	// I only have space for 5x4 cards
 	cardLength := 6
 	const paddingBothSides int = 4
 	maxRows := max(y, 0)
