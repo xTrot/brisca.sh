@@ -95,7 +95,7 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *statusBarModel) View(hand *[]card) string {
+func (m *statusBarModel) View(hand []card) string {
 	if m.hasStarted {
 		var turnString string
 		if m.mySeat == m.turn {

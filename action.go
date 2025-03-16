@@ -91,11 +91,9 @@ func newInnerAction() innerAction {
 	return innerAction{slow: COMMON_WAIT}
 }
 
-func (a action) processAction(ac *actionCache) tea.Cmd {
+func (a action) processAction() tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(a.slow)
-		ac.processed++
-		ac.done = true
 		return a.Payload
 	}
 }
@@ -181,7 +179,7 @@ func (a *action) UnmarshalJSON(b []byte) error {
 		}
 		bottomCard.bottomCard = newCard(bottomCard.BottomCard)
 		a.Payload = bottomCard
-		a.Payload = time.Millisecond
+		a.slow = time.Millisecond
 	case "GRACE_PERIOD_ENDED":
 		a.Payload = gracePeriodEndedPayload{}
 	case "SWAP_BOTTOM_CARD":

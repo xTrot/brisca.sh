@@ -54,46 +54,51 @@ type box struct {
 type actionCache struct {
 	actions     []action
 	refreshTime time.Duration
+	processing  int
 	processed   int
-	done        bool
 }
 
-type newActionCacheMsg *actionCache
+type newActionsMsg struct {
+	actions     []action
+	injectIndex int
+}
 
 func (m *gsModel) Refresh() tea.Cmd {
 	return tea.Every(m.actionCache.refreshTime, func(t time.Time) tea.Msg {
+		var fetched []action
 		if !m.replaying {
-			fetched := m.userGlobal.rh.actionsRequest()
+			fetched = m.userGlobal.rh.actionsRequest()
 			if len(fetched) != 0 {
 				log.Debug("Actions fetched: ", "fetched", fetched)
 			}
-			m.actionCache.actions = append(m.actionCache.actions, fetched...)
 		}
-		return newActionCacheMsg(m.actionCache)
+		return newActionsMsg{actions: fetched, injectIndex: -1}
 	})
 }
 
 func (ac *actionCache) ProcessAction() tea.Cmd {
-	if ac.processed < len(ac.actions) && ac.done {
-		ac.done = false
-		cmd := ac.actions[ac.processed].processAction(ac)
+	if ac.processed < len(ac.actions) && ac.processing == ac.processed {
+		ac.processing++
+		cmd := ac.actions[ac.processing].processAction()
 		return cmd
 	} else {
 		return nil
 	}
 }
 
-func (ac *actionCache) injectAction(fakeAction action) {
-	ac.actions = slices.Insert(ac.actions, ac.processed, fakeAction)
+func (ac *actionCache) injectAction(fakeAction action) tea.Cmd {
+	return func() tea.Msg {
+		return newActionsMsg{actions: []action{fakeAction}, injectIndex: ac.processing + 1}
+	}
 }
 
 type gsModel struct {
 	spinner      spinner.Model
 	index        int
 	boxes        [3][3]box
-	hand         *[]card
+	hand         []card
 	selectedCard int
-	actionCache  *actionCache
+	actionCache  actionCache
 	playerSeats  []playerModel
 	table        tableModel
 	gameConfig   gameConfigPayload
@@ -138,13 +143,13 @@ func newGSModel(userGlobal *userGlobal) gsModel {
 	m.boxes[2][1].style = playerBoxStyle
 	m.boxes[2][2].style = emptyBoxStyle
 	m.selectedCard = 0
-	m.actionCache = &actionCache{
+	m.actionCache = actionCache{
 		actions:     []action{},
 		refreshTime: time.Millisecond * 200,
-		processed:   0,
-		done:        true,
+		processing:  -1,
+		processed:   -1,
 	}
-	m.hand = &[]card{}
+	m.hand = []card{}
 	m.playerSeats = []playerModel{
 		newPlayerModel(),
 		newPlayerModel(),
@@ -187,8 +192,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.userGlobal.sizeMsg = &msg
 		return m.updateWindow(msg)
-	case newActionCacheMsg:
-		m.actionCache = msg
+	case newActionsMsg:
+		if msg.injectIndex != -1 {
+			m.actionCache.actions = slices.Insert(m.actionCache.actions, msg.injectIndex, msg.actions[0])
+		} else {
+			m.actionCache.actions = append(m.actionCache.actions, msg.actions...)
+		}
 		cmd = m.Refresh()
 		cmds = append(cmds, cmd)
 		cmd = m.actionCache.ProcessAction()
@@ -203,12 +212,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// 	lm := newLobby(m.userGlobal)
 		// 	return lm, lm.Init()
 		case key.Matches(msg, m.help.keys.Left):
-			handSize := len(*m.hand)
+			handSize := len(m.hand)
 			rawMove := m.selectedCard - 1
 			m.selectedCard = (rawMove%handSize + handSize) % handSize
 			return m, nil
 		case key.Matches(msg, m.help.keys.Right):
-			m.selectedCard = (m.selectedCard + 1) % len(*m.hand)
+			m.selectedCard = (m.selectedCard + 1) % len(m.hand)
 			return m, nil
 		case key.Matches(msg, m.help.keys.Enter):
 			cmd = m.playCard(m.selectedCard)
@@ -245,14 +254,16 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 	case updateHandMsg:
-		m.hand = &msg.hand
+		m.hand = msg.hand
 		m.swapCheck()
 	case localUpdateHandMsg:
 		m.statusBar.iPlayed = true
-		m.hand = &msg.hand
+		m.hand = msg.hand
 		m.swapCheck()
 
+		// All Payload case statement must update ac processed
 	case gameConfigPayload:
+		m.actionCache.processed++
 		m.gameConfig = msg
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
@@ -263,6 +274,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 4th player box
 		}
 	case gameStartedPayload:
+		m.actionCache.processed++
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 		// Each player draws 3 cards
@@ -274,29 +286,36 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.processSeats(msg.Seats)
 		cmds = append(cmds, cmd)
 	case bottomCardSelectedPayload:
+		m.actionCache.processed++
 		m.statusBar.swapCard = newCard(msg.bottomCard.suitString + ":2")
 		m.table.bottomCard = msg.bottomCard
 	case gracePeriodEndedPayload:
+		m.actionCache.processed++
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 	case swapBottomCardPayload:
+		m.actionCache.processed++
 		m.table.bottomCard = newBottomCard(m.table.bottomCard)
 		cmds = append(cmds, m.updateHand(false))
 		m.table, cmd = m.table.Update(msg)
 		cmds = append(cmds, cmd)
 	case cardDrawnPayload:
+		m.actionCache.processed++
 		m.table.deckSize--
 		m.playerSeats[msg.Seat].handSize++
 		cmds = append(cmds, m.updateHand(false))
 	case cardPlayedPayload:
+		m.actionCache.processed++
 		turnSwitch := action{slow: time.Millisecond * 200, Payload: turnSwitchPayload{}}
-		m.actionCache.injectAction(turnSwitch)
+		cmds = append(cmds, m.actionCache.injectAction(turnSwitch))
 		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
 		m.playerSeats[msg.Seat].handSize--
 	case turnSwitchPayload:
+		m.actionCache.processed++
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 	case turnWonPayload:
+		m.actionCache.processed++
 		slices.Reverse(m.table.cardsInPlay)
 		m.playerSeats[msg.Seat].scorePile = append(m.playerSeats[msg.Seat].scorePile, m.table.cardsInPlay...)
 		m.playerSeats[msg.Seat].score = m.playerSeats[msg.Seat].UpdateScore()
@@ -304,6 +323,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 	case gameWonPayload:
+		m.actionCache.processed++
 		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
 		return ws, ws.Init()
 
@@ -453,8 +473,8 @@ func (m *gsModel) Next() {
 func (m *gsModel) handView() string {
 	var s string
 	s = "Hand:"
-	for i := range *m.hand {
-		card := (*m.hand)[i]
+	for i := range m.hand {
+		card := (m.hand)[i]
 		if m.selectedCard == i {
 			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(card.renderCard()))
 		} else {
@@ -489,17 +509,17 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 func (m *gsModel) playCard(index int) tea.Cmd {
 	if m.statusBar.isMyTurn() && m.statusBar.haventPlayed() {
 		return func() tea.Msg {
-			handSize := len(*m.hand)
+			handSize := len(m.hand)
 			if handSize <= index {
 				return nil
 			}
 			newHand := []card{}
-			if len(*m.hand) != 1 {
-				for i := range *m.hand {
+			if len(m.hand) != 1 {
+				for i := range m.hand {
 					if i == index {
 						continue
 					}
-					newHand = append(newHand, (*m.hand)[i])
+					newHand = append(newHand, (m.hand)[i])
 				}
 			}
 			index := handIndex{Index: index}
@@ -525,7 +545,7 @@ func (m *gsModel) swapBottomCard() tea.Cmd {
 }
 
 func (m *gsModel) swapCheck() {
-	if m.table.deckSize > 1 && slices.ContainsFunc(*m.hand, func(c card) bool {
+	if m.table.deckSize > 1 && slices.ContainsFunc(m.hand, func(c card) bool {
 		return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
 	}) {
 		m.statusBar.canSwap = true
