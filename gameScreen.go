@@ -77,7 +77,7 @@ func (m *gsModel) Refresh() tea.Cmd {
 }
 
 func (ac *actionCache) ProcessAction() tea.Cmd {
-	if ac.processed < len(ac.actions) && ac.processing == ac.processed {
+	if len(ac.actions) > ac.processing+1 && ac.processing == ac.processed {
 		ac.processing++
 		cmd := ac.actions[ac.processing].processAction()
 		return cmd
