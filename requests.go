@@ -481,7 +481,6 @@ func (m requestHandler) mySeatRequest() mySeat {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", res.StatusCode)
 		return seat
 	}
 
