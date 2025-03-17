@@ -72,17 +72,18 @@ func (pm playerModel) Update(msg tea.Msg) (playerModel, tea.Cmd) {
 func (pm playerModel) View(x, y int) string {
 	const twoNewLines int = 2
 	remainingY := y - twoNewLines
-	return fmt.Sprintf("%s Score: %d\n  Score Pile:\n  %s",
+	return fmt.Sprintf("%s Score: %d\n  Score Pile:\n%s",
 		pm.name, pm.score, pm.renderScorePile(x, remainingY))
 }
 
 func (pm playerModel) renderScorePile(x, y int) string {
-	cardLength := 6
+	cardLength := 7
+	padding := "  "
 	const paddingBothSides int = 4
 	maxRows := max(y, 0)
-	maxCols := max((x-paddingBothSides)/cardLength-1, 0)
+	maxCols := max((x-paddingBothSides)/cardLength, 0)
 	maxSP := maxRows * maxCols
-	spString := ""
+	spString := padding
 	spSize := len(pm.scorePile)
 	reverseStart := spSize - 1
 rowLoop:

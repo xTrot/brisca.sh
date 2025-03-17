@@ -50,11 +50,12 @@ func (tm tableModel) Update(msg tea.Msg) (tableModel, tea.Cmd) {
 
 func (tm tableModel) renderCardsInPlay(width int) string {
 	cardLength := 7
+	padding := "  "
 	const paddingBothSides int = 4
 	maxRows := 2
-	maxCols := max((width-paddingBothSides)/cardLength-1, 0)
+	maxCols := max((width-paddingBothSides)/cardLength, 0)
 	maxCIP := maxRows * maxCols
-	cip := ""
+	cip := padding
 	cipSize := len(tm.cardsInPlay)
 rowLoop:
 	for i := range maxRows {
@@ -64,7 +65,7 @@ rowLoop:
 			if !(index < cipSize) {
 				break rowLoop
 			}
-			cip += fmt.Sprintf("%s ", tm.cardsInPlay[index].renderCard())
+			cip += fmt.Sprintf("%s", tm.cardsInPlay[index].renderCard())
 		}
 		cip += "\n  "
 	}
@@ -75,7 +76,7 @@ rowLoop:
 }
 
 func (tm tableModel) View(width int) string {
-	return fmt.Sprintf("Table:\n  Deck: %d\n  Life Card: %s\n\n  In Play:\n  %s",
+	return fmt.Sprintf("Table:\n  Deck: %d\n  Life Card: %s\n  In Play:\n%s",
 		tm.deckSize,
 		tm.bottomCardStyle.Render(tm.bottomCard.renderCard()),
 		tm.renderCardsInPlay(width),
