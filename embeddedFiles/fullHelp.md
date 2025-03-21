@@ -2,14 +2,12 @@
 # Cards: Spaniard deck
 The game is played with a 40 card spaniard deck or "Naipes Expañoles".
 These cards are numbered from 1 through 12 skipping 8 and 9. The suits are:
-```
+|    | Suits(EN) | Suits(SP) |
 |----|---------|--------|
-| 🪙   Gold      Oro    |
-| ⚔️   Sword     Espada |
-| 🪵   Club      Basto  |
-| 🏆   Chalice   Copa   |
-|----|---------|--------|
-```
+| 🪙 | Gold    | Oro    |
+| ⚔️ | Sword   | Espada |
+| 🪵 | Club    | Basto  |
+| 🏆 | Chalice | Copa   |
 # Players: 2-4
 The game can be played by 2 to 4 players, in the case of four players the 
 game is played in teams of two. In the case of three players one card is 
@@ -24,8 +22,6 @@ the *Turn Suit*. The highest power card of the highest power suit wins. Not
 all the cards have a score, only the most powerful five numbers,
 see table below:
 # Cards (in order of most powerful first)
-```
-|--------|-------|
 | Number | Score |
 |--------|-------|
 | 1      | 11    |
@@ -38,8 +34,6 @@ see table below:
 | 5      | 0     |
 | 4      | 0     |
 | 2      | 0     |
-|--------|-------|
-```
 # Game Setup:
 First players are sat around the table. Then the staring player is picked.
 The **Life Card** is picked, revealed and set at the bottom of the deck,
