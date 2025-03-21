@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -104,10 +105,13 @@ func (m MarkdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// here.
 			m.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
 			m.viewport.YPosition = headerHeight
-			glamour.WithWordWrap(m.Style.GetWidth())
-			out, err := glamour.Render(
-				m.Text,
-				"dracula")
+			os.Setenv("GLAMOUR_STYLE", "dracula")
+			renderer, _ := glamour.NewTermRenderer(
+				glamour.WithWordWrap(m.Style.GetWidth()),
+				glamour.WithEnvironmentConfig(),
+			)
+			out, err := renderer.Render(
+				m.Text)
 			if err != nil {
 				log.Fatal(err.Error())
 				panic("Markdown render panic.")
