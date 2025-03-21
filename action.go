@@ -71,13 +71,13 @@ type gameWonPayload struct {
 	Team string `json:"team"`
 }
 
+type turnSwitchPayload struct{}
+
 type action struct {
 	Type    string  `json:"type"`
 	Payload Payload `json:"payload"`
 	slow    time.Duration
 }
-
-type turnSwitchPayload struct{}
 
 type Payload any
 

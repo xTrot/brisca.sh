@@ -59,21 +59,47 @@ type actionCache struct {
 }
 
 type newActionsMsg struct {
-	actions     []action
-	injectIndex int
+	actions  []action
+	gameOver bool
 }
 
 func (m *gsModel) Refresh() tea.Cmd {
 	return tea.Every(m.actionCache.refreshTime, func(t time.Time) tea.Msg {
 		var fetched []action
-		if !m.replaying {
+		var msg newActionsMsg
+		if !m.gameOver {
 			fetched = m.userGlobal.rh.actionsRequest()
-			if len(fetched) != 0 {
-				log.Debug("Actions fetched: ", "fetched", fetched)
-			}
 		}
-		return newActionsMsg{actions: fetched, injectIndex: -1}
+		msg.actions, msg.gameOver = injectClientActions(fetched)
+		return msg
 	})
+}
+
+func injectClientActions(fetched []action) ([]action, bool) {
+	var effective []action
+	var before bool
+	var clientAction action
+	var gameOver bool
+	for _, a := range fetched {
+		switch a.Payload.(type) {
+		case cardPlayedPayload:
+			before = false
+			clientAction = action{Type: "turn_switch", slow: time.Millisecond * 200, Payload: turnSwitchPayload{}}
+		case gameWonPayload:
+			gameOver = true
+		default:
+			effective = append(effective, a)
+			continue
+		}
+		if before {
+			effective = append(effective, clientAction)
+			effective = append(effective, a)
+		} else {
+			effective = append(effective, a)
+			effective = append(effective, clientAction)
+		}
+	}
+	return effective, gameOver
 }
 
 func (ac *actionCache) ProcessAction() tea.Cmd {
@@ -83,12 +109,6 @@ func (ac *actionCache) ProcessAction() tea.Cmd {
 		return cmd
 	} else {
 		return nil
-	}
-}
-
-func (ac *actionCache) injectAction(fakeAction action) tea.Cmd {
-	return func() tea.Msg {
-		return newActionsMsg{actions: []action{fakeAction}, injectIndex: ac.processing + 1}
 	}
 }
 
@@ -107,14 +127,13 @@ type gsModel struct {
 	help         gameScreenHelpModel
 	cheatSheet   MarkdownModel
 	showCheat    bool
-	replaying    bool
+	gameOver     bool
 }
 
 func newReplayGSModel(userGlobal *userGlobal, actions []action) gsModel {
 	m := newGSModel(userGlobal)
 
-	m.actionCache.actions = actions
-	m.replaying = true
+	m.actionCache.actions, m.gameOver = injectClientActions(actions)
 
 	return m
 }
@@ -193,10 +212,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.userGlobal.sizeMsg = &msg
 		return m.updateWindow(msg)
 	case newActionsMsg:
-		if msg.injectIndex != -1 {
-			m.actionCache.actions = slices.Insert(m.actionCache.actions, msg.injectIndex, msg.actions[0])
-		} else {
+		if len(msg.actions) > 0 {
 			m.actionCache.actions = append(m.actionCache.actions, msg.actions...)
+		}
+		if !m.gameOver {
+			m.gameOver = msg.gameOver
+			log.Debug("gameOver:", "gameId", m.gameConfig.GameId)
 		}
 		cmd = m.Refresh()
 		cmds = append(cmds, cmd)
@@ -306,8 +327,6 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.updateHand(false))
 	case cardPlayedPayload:
 		m.actionCache.processed++
-		turnSwitch := action{slow: time.Millisecond * 200, Payload: turnSwitchPayload{}}
-		cmds = append(cmds, m.actionCache.injectAction(turnSwitch))
 		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
 		m.playerSeats[msg.Seat].handSize--
 	case turnSwitchPayload:
@@ -497,7 +516,7 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 		if delay {
 			time.Sleep(time.Millisecond * 500)
 		}
-		if m.replaying {
+		if m.gameOver {
 			return nil
 		}
 		newHand := m.userGlobal.rh.handRequest()

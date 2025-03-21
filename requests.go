@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	jar, _  = cookiejar.New(nil)
 	baseurl = "http://localhost:8000"
 )
 
