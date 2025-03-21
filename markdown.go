@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -33,9 +32,10 @@ var (
 )
 
 type MarkdownModel struct {
-	Text  string
-	Style lipgloss.Style
-	ready bool
+	Text     string
+	Style    lipgloss.Style
+	ready    bool
+	renderer glamour.TermRenderer
 
 	viewport viewport.Model
 	Title    string
@@ -45,23 +45,21 @@ type MarkdownModel struct {
 }
 
 func NewCheatSheetModel() MarkdownModel {
+	renderer, _ := glamour.NewTermRenderer(
+		glamour.WithWordWrap(0),
+		glamour.WithEnvironmentConfig(),
+	)
+
 	return MarkdownModel{
-		Text:   CheatSheet,
-		Style:  style,
-		static: true,
+		Text:     CheatSheet,
+		Style:    style,
+		static:   true,
+		renderer: *renderer,
 	}
 }
 
 func NewFullHelpModel() MarkdownModel {
-	viewport := viewport.New(24, 80)
-
-	return MarkdownModel{
-		Text:     FullHelp,
-		Style:    style,
-		static:   false,
-		viewport: viewport,
-		Title:    "How to Play brisca.sh",
-	}
+	return NewMarkdownModel(FullHelp, false, "How to Play brisca.sh")
 }
 
 // title argument is only for viewport
@@ -71,12 +69,18 @@ func NewMarkdownModel(text string, static bool, title string) MarkdownModel {
 		vp = viewport.New(24, 80)
 	}
 
+	renderer, _ := glamour.NewTermRenderer(
+		glamour.WithWordWrap(0),
+		glamour.WithEnvironmentConfig(),
+	)
+
 	return MarkdownModel{
 		Text:     text,
 		Style:    style,
 		static:   false,
 		Title:    title,
 		viewport: vp,
+		renderer: *renderer,
 	}
 }
 
@@ -105,12 +109,7 @@ func (m MarkdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// here.
 			m.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
 			m.viewport.YPosition = headerHeight
-			os.Setenv("GLAMOUR_STYLE", "dracula")
-			renderer, _ := glamour.NewTermRenderer(
-				glamour.WithWordWrap(m.Style.GetWidth()),
-				glamour.WithEnvironmentConfig(),
-			)
-			out, err := renderer.Render(
+			out, err := m.renderer.Render(
 				m.Text)
 			if err != nil {
 				log.Fatal(err.Error())
@@ -133,8 +132,7 @@ func (m MarkdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MarkdownModel) View() string {
 	if m.static {
-		glamour.WithWordWrap(m.Style.GetWidth())
-		out, err := glamour.Render(m.Text, "dracula")
+		out, err := m.renderer.Render(m.Text)
 		if err != nil {
 			log.Fatal(err.Error())
 			panic("Markdown render panic.")

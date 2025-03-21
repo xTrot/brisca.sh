@@ -28,6 +28,7 @@ type Environment struct {
 
 func main() {
 	var env Environment
+	os.Setenv("GLAMOUR_STYLE", "dracula")
 	err := envconfig.Process("brisca", &env)
 	if err != nil {
 		log.Fatal(err.Error())
