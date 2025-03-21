@@ -21,7 +21,6 @@ var (
 			BorderForeground(lipgloss.Color("69"))
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
-			Width(75).Height(5).
 			Align(lipgloss.Left, lipgloss.Center).
 			BorderStyle(lipgloss.HiddenBorder())
 	DEBOUNCE_TIME = time.Second
@@ -128,7 +127,9 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.userGlobal.sizeMsg = &msg
-		m.style = m.style.Width(msg.Width - 2).Height(msg.Height - 2)
+		m.style = m.style.
+			Width(max(windowWidthMin, msg.Width) - 2).
+			Height(max(windowHighttMin, msg.Height) - 2)
 
 	case debounceMsg:
 		m.debounced = true
@@ -181,7 +182,7 @@ func (m winScreen) View() string {
 	}
 
 	s = lipgloss.JoinVertical(lipgloss.Center,
-		winnerStyle.Render("\n"+winner+"\n"),
+		winnerStyle.Render(winner),
 		s,
 		helpStyle.AlignHorizontal(lipgloss.Center).Render("Press any key to exit"))
 
