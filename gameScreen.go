@@ -215,7 +215,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(msg.actions) > 0 {
 			m.actionCache.actions = append(m.actionCache.actions, msg.actions...)
 		}
-		if !m.gameOver {
+		if !m.gameOver && msg.gameOver {
 			m.gameOver = msg.gameOver
 			log.Debug("gameOver:", "gameId", m.gameConfig.GameId)
 		}
