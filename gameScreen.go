@@ -449,7 +449,10 @@ func (m gsModel) View() string {
 			m.cheatSheet.Style.Render(m.cheatSheet.View()),
 		)
 	} else {
-		m.boxes[1][1].view = m.table.View(m.boxes[1][1].style.GetWidth())
+		m.boxes[1][1].view = m.table.View(
+			m.boxes[1][1].style.GetWidth(),
+			m.boxes[1][1].style.GetHeight(),
+		)
 
 		for i := range m.gameConfig.MaxPlayers {
 			x := m.playerSeats[i].boxX
