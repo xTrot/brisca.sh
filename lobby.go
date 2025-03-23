@@ -66,7 +66,7 @@ type lobbyModel struct {
 	keys         *listKeyMap
 	delegateKeys *delegateKeyMap
 	lastUpdate   time.Time
-	userGlobal   *userGlobal
+	userGlobal   userGlobal
 	fullHelp     MarkdownModel
 	showFH       bool
 }
@@ -75,7 +75,7 @@ type itemsMsg struct {
 	items []list.Item
 }
 
-func newLobby(userGlobal *userGlobal) lobbyModel {
+func newLobby(userGlobal userGlobal) lobbyModel {
 	var (
 		delegateKeys = newDelegateKeyMap()
 		listKeys     = newListKeyMap()
@@ -161,7 +161,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = &msg
+		m.userGlobal.sizeMsg = msg
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		var model tea.Model

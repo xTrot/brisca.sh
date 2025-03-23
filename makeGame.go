@@ -13,11 +13,11 @@ import (
 type makeGameModel struct {
 	form       *huh.Form // huh.Form is just a tea.Model
 	nextView   tea.Model
-	userGlobal *userGlobal
+	userGlobal userGlobal
 	confirm    *bool
 }
 
-func newMakeGame(nv tea.Model, userGlobal *userGlobal) makeGameModel {
+func newMakeGame(nv tea.Model, userGlobal userGlobal) makeGameModel {
 	var confirm bool
 	return makeGameModel{
 		confirm: &confirm,

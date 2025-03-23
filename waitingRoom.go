@@ -65,10 +65,10 @@ type waitingRoomModel struct {
 	keys           *wrKeyMap
 	descDelegate   list.DefaultDelegate
 	noDescDelegate list.DefaultDelegate
-	userGlobal     *userGlobal
+	userGlobal     userGlobal
 }
 
-func newWaitingRoom(userGlobal *userGlobal) waitingRoomModel {
+func newWaitingRoom(userGlobal userGlobal) waitingRoomModel {
 	var (
 		listKeys = newWrKeyMap()
 	)
@@ -103,7 +103,7 @@ func newWaitingRoom(userGlobal *userGlobal) waitingRoomModel {
 			listKeys.leave,
 		}
 	}
-	wrm.list.Title = "User " + *wrm.userGlobal.username
+	wrm.list.Title = "User " + wrm.userGlobal.username
 	wrm.list.DisableQuitKeybindings()
 	wrm.list.SetFilteringEnabled(false)
 	wrm.list.SetShowStatusBar(false)
@@ -139,14 +139,14 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case leaveGameMsg:
 		lobby := newLobby(m.userGlobal)
-		lobby.list.Title = "User: " + *m.userGlobal.username
+		lobby.list.Title = "User: " + m.userGlobal.username
 		cmds = append(cmds, lobby.Init())
 		lm, cmd := lobby.Update(msg)
 		cmds = append(cmds, cmd)
 		return lm, tea.Batch(cmds...)
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = &msg
+		m.userGlobal.sizeMsg = msg
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")

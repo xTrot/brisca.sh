@@ -21,9 +21,9 @@ type requestHandler struct {
 	jar *cookiejar.Jar
 }
 
-func newRequestHandler() *requestHandler {
+func newRequestHandler() requestHandler {
 	jar, _ := cookiejar.New(nil)
-	return &requestHandler{
+	return requestHandler{
 		jar: jar,
 	}
 }

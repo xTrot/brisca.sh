@@ -123,14 +123,14 @@ type gsModel struct {
 	table        tableModel
 	gameConfig   gameConfigPayload
 	statusBar    statusBarModel
-	userGlobal   *userGlobal
+	userGlobal   userGlobal
 	help         gameScreenHelpModel
 	cheatSheet   MarkdownModel
 	showCheat    bool
 	gameOver     bool
 }
 
-func newReplayGSModel(userGlobal *userGlobal, actions []action) gsModel {
+func newReplayGSModel(userGlobal userGlobal, actions []action) gsModel {
 	m := newGSModel(userGlobal)
 
 	m.actionCache.actions, m.gameOver = injectClientActions(actions)
@@ -138,7 +138,7 @@ func newReplayGSModel(userGlobal *userGlobal, actions []action) gsModel {
 	return m
 }
 
-func newGSModel(userGlobal *userGlobal) gsModel {
+func newGSModel(userGlobal userGlobal) gsModel {
 	m := gsModel{
 		userGlobal: userGlobal,
 	}
@@ -209,7 +209,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cheatSheet.Style = msg.csStyle
 		return m, nil
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = &msg
+		m.userGlobal.sizeMsg = msg
 		return m.updateWindow(msg)
 	case newActionsMsg:
 		if len(msg.actions) > 0 {

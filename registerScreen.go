@@ -36,7 +36,7 @@ type registerModel struct {
 	textInput  textinput.Model
 	help       helpModel
 	isUp       bool
-	userGlobal *userGlobal
+	userGlobal userGlobal
 
 	upStyle       lipgloss.Style
 	downStyle     lipgloss.Style
@@ -45,16 +45,16 @@ type registerModel struct {
 }
 
 type userGlobal struct {
-	session  *ssh.Session
+	session  ssh.Session
 	renderer *lipgloss.Renderer
-	sizeMsg  *tea.WindowSizeMsg
-	username *string
-	rh       *requestHandler
+	sizeMsg  tea.WindowSizeMsg
+	username string
+	rh       requestHandler
 }
 
 func (m userGlobal) LastWindowSizeReplay() tea.Cmd {
 	return func() tea.Msg {
-		return *m.sizeMsg
+		return m.sizeMsg
 	}
 }
 
@@ -68,8 +68,8 @@ func newModel(session *ssh.Session) registerModel {
 	m.textInput.Width = 20
 	m.textInput.Prompt = "\tWhat's your username?\n\t\t> "
 	m.help = newHelp()
-	m.userGlobal = &userGlobal{
-		session:  session,
+	m.userGlobal = userGlobal{
+		session:  *session,
 		renderer: bubbletea.MakeRenderer(*session),
 		rh:       newRequestHandler(),
 	}
@@ -103,7 +103,7 @@ func (m registerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = &msg
+		m.userGlobal.sizeMsg = msg
 
 	case tea.KeyMsg:
 		switch {
@@ -116,7 +116,7 @@ func (m registerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var register register
 			register.Username = m.textInput.Value()
 			if m.userGlobal.rh.registerRequest(register) {
-				m.userGlobal.username = &register.Username
+				m.userGlobal.username = register.Username
 				lm := newLobby(m.userGlobal)
 				return lm, tea.Batch(lm.Init())
 			}

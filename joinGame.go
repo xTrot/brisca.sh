@@ -13,12 +13,12 @@ import (
 type joinGameModel struct {
 	form       *huh.Form // huh.Form is just a tea.Model
 	nextView   tea.Model
-	userGlobal *userGlobal
+	userGlobal userGlobal
 	gameId     *string
 	replay     bool
 }
 
-func newReplayGame(nv tea.Model, userGlobal *userGlobal) joinGameModel {
+func newReplayGame(nv tea.Model, userGlobal userGlobal) joinGameModel {
 	var gameId string
 	return joinGameModel{
 		gameId: &gameId,
@@ -35,7 +35,7 @@ func newReplayGame(nv tea.Model, userGlobal *userGlobal) joinGameModel {
 	}
 }
 
-func newJoinGame(nv tea.Model, userGlobal *userGlobal) joinGameModel {
+func newJoinGame(nv tea.Model, userGlobal userGlobal) joinGameModel {
 	var gameId string
 	return joinGameModel{
 		gameId: &gameId,

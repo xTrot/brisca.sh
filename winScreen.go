@@ -33,7 +33,7 @@ type winScreen struct {
 	style      lipgloss.Style
 	gameConfig gameConfigPayload
 	winString  string
-	userGlobal *userGlobal
+	userGlobal userGlobal
 	debounced  bool
 }
 
@@ -50,7 +50,7 @@ type doneCounting struct {
 	index int
 }
 
-func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWonPayload, userGlobal *userGlobal) winScreen {
+func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWonPayload, userGlobal userGlobal) winScreen {
 
 	var firstScoreCounter scoreCounter
 	var secondScoreCounter scoreCounter
@@ -126,7 +126,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = &msg
+		m.userGlobal.sizeMsg = msg
 		m.style = m.style.
 			Width(max(windowWidthMin, msg.Width) - 2).
 			Height(max(windowHighttMin, msg.Height) - 2)
