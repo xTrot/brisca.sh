@@ -9,4 +9,6 @@ var (
 	CheatSheet string
 	//go:embed embeddedFiles/fullHelp.md
 	FullHelp string
+	//go:embed embeddedFiles/makeGameHelp.md
+	MakeGameHelp string
 )

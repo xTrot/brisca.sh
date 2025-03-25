@@ -77,7 +77,7 @@ func NewMarkdownModel(text string, static bool, title string) MarkdownModel {
 	return MarkdownModel{
 		Text:     text,
 		Style:    style,
-		static:   false,
+		static:   static,
 		Title:    title,
 		viewport: vp,
 		renderer: *renderer,

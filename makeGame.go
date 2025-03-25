@@ -15,6 +15,9 @@ type makeGameModel struct {
 	nextView   tea.Model
 	userGlobal userGlobal
 	confirm    *bool
+
+	helpMd MarkdownModel
+	showMd bool
 }
 
 func newMakeGame(nv tea.Model, userGlobal userGlobal) makeGameModel {
@@ -40,7 +43,7 @@ func newMakeGame(nv tea.Model, userGlobal userGlobal) makeGameModel {
 				huh.NewSelect[bool]().
 					Key("swapBottomCard").
 					Options(huh.NewOptions(true, false)...).
-					Title("Is \"swapBottomCard\" allowed:"),
+					Title("Enable Swap Life Card house rule:"),
 
 				huh.NewConfirm().
 					Title("Are you sure?").
@@ -51,6 +54,7 @@ func newMakeGame(nv tea.Model, userGlobal userGlobal) makeGameModel {
 		),
 		nextView:   nv,
 		userGlobal: userGlobal,
+		helpMd:     NewMarkdownModel(MakeGameHelp, true, ""),
 	}
 }
 
@@ -105,6 +109,8 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl-c":
 			return m, tea.Quit
+		case "H":
+			m.showMd = !m.showMd
 		}
 	}
 
@@ -112,5 +118,9 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m makeGameModel) View() string {
-	return m.form.View()
+	if m.showMd {
+		return m.helpMd.View()
+	} else {
+		return m.form.View()
+	}
 }
