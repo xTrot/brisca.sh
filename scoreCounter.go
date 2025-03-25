@@ -23,6 +23,8 @@ type scoreCounter struct {
 	countedCards []countedCard
 	counted      int
 	total        int
+
+	renderEmoji bool
 }
 
 type countedCard struct {
@@ -31,7 +33,7 @@ type countedCard struct {
 	total    int
 }
 
-func newScoreCounter(index int, name string, cards []card) scoreCounter {
+func newScoreCounter(index int, name string, cards []card, renderEmoji bool) scoreCounter {
 	const showLastResults = 5
 
 	sp := spinner.New()
@@ -48,6 +50,7 @@ func newScoreCounter(index int, name string, cards []card) scoreCounter {
 			Padding(1),
 		spinner:      sp,
 		countedCards: make([]countedCard, showLastResults),
+		renderEmoji:  renderEmoji,
 	}
 }
 
@@ -113,7 +116,7 @@ func (m scoreCounter) View() string {
 			s += "..........................\n" // Width 26 equal to else statement
 		} else {
 			s += fmt.Sprintf("%s Worth:%2d Tally:%3d\n", // Width 26 equal to if statement
-				res.card.renderCard(), res.card.score, res.total)
+				res.card.renderCard(m.renderEmoji), res.card.score, res.total)
 		}
 	}
 

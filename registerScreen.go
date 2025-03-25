@@ -45,11 +45,12 @@ type registerModel struct {
 }
 
 type userGlobal struct {
-	session  ssh.Session
-	renderer *lipgloss.Renderer
-	sizeMsg  tea.WindowSizeMsg
-	username string
-	rh       requestHandler
+	session     ssh.Session
+	renderer    *lipgloss.Renderer
+	sizeMsg     tea.WindowSizeMsg
+	username    string
+	rh          requestHandler
+	renderEmoji bool
 }
 
 func (m userGlobal) LastWindowSizeReplay() tea.Cmd {
@@ -69,9 +70,10 @@ func newModel(session *ssh.Session) registerModel {
 	m.textInput.Prompt = "\tWhat's your username?\n\t\t> "
 	m.help = newHelp()
 	m.userGlobal = userGlobal{
-		session:  *session,
-		renderer: bubbletea.MakeRenderer(*session),
-		rh:       newRequestHandler(),
+		session:     *session,
+		renderer:    bubbletea.MakeRenderer(*session),
+		rh:          newRequestHandler(),
+		renderEmoji: true,
 	}
 	m.isUp = m.userGlobal.rh.statusRequest()
 

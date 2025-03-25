@@ -34,6 +34,7 @@ type listKeyMap struct {
 	replayGame key.Binding
 	choose     key.Binding
 	help       key.Binding
+	emoji      key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -57,6 +58,10 @@ func newListKeyMap() *listKeyMap {
 		help: key.NewBinding(
 			key.WithKeys("H"),
 			key.WithHelp("H", "how to play"),
+		),
+		emoji: key.NewBinding(
+			key.WithKeys("E"),
+			key.WithHelp("E", "toggle emoji rendering"),
 		),
 	}
 }
@@ -102,6 +107,7 @@ func newLobby(userGlobal userGlobal) lobbyModel {
 			listKeys.replayGame,
 			listKeys.choose,
 			listKeys.help,
+			listKeys.emoji,
 		}
 	}
 	gamesList.AdditionalShortHelpKeys = func() []key.Binding {
@@ -206,6 +212,16 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.replayGame):
 			rg := newReplayGame(m, m.userGlobal)
 			return rg, rg.Init()
+		case key.Matches(msg, m.keys.emoji):
+			if m.userGlobal.renderEmoji {
+				m.list.StatusMessageLifetime = time.Second * 2
+				m.userGlobal.renderEmoji = false
+				cmds = append(cmds, m.list.NewStatusMessage("Emoji rendering disabled."))
+			} else {
+				m.list.StatusMessageLifetime = time.Second * 2
+				m.userGlobal.renderEmoji = true
+				cmds = append(cmds, m.list.NewStatusMessage("Emoji rendering enabled."))
+			}
 		}
 	}
 

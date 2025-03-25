@@ -29,16 +29,18 @@ type statusBarModel struct {
 	swapBottomCard bool
 	maxPlayers     int
 	swapCard       card
+	renderEmoji    bool
 }
 
 func (m statusBarModel) haventPlayed() bool {
 	return !m.iPlayed
 }
 
-func newStatusBar(players []playerModel) statusBarModel {
+func newStatusBar(players []playerModel, renderEmoji bool) statusBarModel {
 	return statusBarModel{
-		timer:   timer.New(GRACE_LENGTH),
-		players: players,
+		timer:       timer.New(GRACE_LENGTH),
+		players:     players,
+		renderEmoji: renderEmoji,
 	}
 }
 
@@ -106,7 +108,7 @@ func (m *statusBarModel) View(hand []card) string {
 
 		swapCardStatus := ""
 		if m.swapBottomCard && m.turn == m.mySeat && m.canSwap {
-			swapCardStatus = ", you can swap " + m.swapCard.renderCard() + " for the life card"
+			swapCardStatus = ", you can swap " + m.swapCard.renderCard(m.renderEmoji) + " for the life card"
 		}
 
 		return fmt.Sprintf("Status: %s, timer: %s%s", turnString, m.timer.View(), swapCardStatus)

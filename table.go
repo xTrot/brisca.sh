@@ -19,9 +19,10 @@ type tableModel struct {
 	cardsInPlay []card
 
 	bottomCardStyle lipgloss.Style
+	renderEmoji     bool
 }
 
-func newTableModel() tableModel {
+func newTableModel(renderEmoji bool) tableModel {
 	return tableModel{
 		deckSize:   40,
 		bottomCard: newCard("BASTO:3"),
@@ -31,6 +32,7 @@ func newTableModel() tableModel {
 			newCard("COPA:10"),
 		},
 		bottomCardStyle: lipgloss.NewStyle(),
+		renderEmoji:     renderEmoji,
 	}
 }
 
@@ -53,12 +55,12 @@ func (tm tableModel) renderCardsInPlay(width int, height int) string {
 		cip := ""
 		switch {
 		case len(tm.cardsInPlay) > 0:
-			cip += tm.cardsInPlay[0].renderCard()
+			cip += tm.cardsInPlay[0].renderCard(tm.renderEmoji)
 			fallthrough
 		case len(tm.cardsInPlay) > 1:
 			cip += "\n  "
 			for i := 1; i < len(tm.cardsInPlay); i++ {
-				cip += tm.cardsInPlay[i].renderCard()
+				cip += tm.cardsInPlay[i].renderCard(tm.renderEmoji)
 			}
 		}
 		return cip
@@ -79,7 +81,7 @@ rowLoop:
 			if !(index < cipSize) {
 				break rowLoop
 			}
-			cip += fmt.Sprintf("%s", tm.cardsInPlay[index].renderCard())
+			cip += fmt.Sprintf("%s", tm.cardsInPlay[index].renderCard(tm.renderEmoji))
 		}
 		cip += padding
 	}
@@ -92,7 +94,7 @@ rowLoop:
 func (tm tableModel) View(width int, height int) string {
 	return fmt.Sprintf("Table:\n  Deck: %d\n  Life Card: %s\n  In Play: %s",
 		tm.deckSize,
-		tm.bottomCardStyle.Render(tm.bottomCard.renderCard()),
+		tm.bottomCardStyle.Render(tm.bottomCard.renderCard(tm.renderEmoji)),
 		tm.renderCardsInPlay(width, height-3), // 3 new lines above.
 	)
 }

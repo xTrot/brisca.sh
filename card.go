@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand/v2"
 	"strconv"
 	"strings"
 
@@ -36,10 +35,12 @@ var (
 )
 
 type card struct {
-	suit  string
 	num   int
 	val   int
 	score int
+
+	emojiSuit string
+	charSuit  string
 
 	// The original string from the server
 	suitString string
@@ -60,13 +61,23 @@ func newCard(cardString string) card {
 
 	switch suitString {
 	case "ORO":
-		card.suit = "🪙"
+		card.emojiSuit = "🪙"
 	case "COPA":
-		card.suit = "🏆"
+		card.emojiSuit = "🏆"
 	case "BASTO":
-		card.suit = "🪵"
+		card.emojiSuit = "🪵"
 	case "ESPADA":
-		card.suit = "⚔️"
+		card.emojiSuit = "⚔️"
+	}
+	switch suitString {
+	case "ORO":
+		card.charSuit = "Or"
+	case "COPA":
+		card.charSuit = "Co"
+	case "BASTO":
+		card.charSuit = "Ba"
+	case "ESPADA":
+		card.charSuit = "Es"
 	}
 
 	card.num = CARDS_WITHOUT_SKIP[index][CARD_NUMBER_INDEX]
@@ -78,33 +89,12 @@ func newCard(cardString string) card {
 	return card
 }
 
-func (m *card) renderCard() string {
-	return fmt.Sprintf("[%s:%2d]", m.suit, m.num)
-}
-
-func randCard() card {
-	var card card
-
-	index := rand.IntN(len(CARDS_WITHOUT_SKIP))
-
-	suitString := SUITS[rand.IntN(len(SUITS))]
-
-	switch suitString {
-	case "ORO":
-		card.suit = "🪙"
-	case "COPA":
-		card.suit = "🏆"
-	case "BASTO":
-		card.suit = "🪵"
-	case "ESPADA":
-		card.suit = "⚔️"
+func (m *card) renderCard(renderEmoji bool) string {
+	if renderEmoji {
+		return fmt.Sprintf("[%s:%2d]", m.emojiSuit, m.num)
+	} else {
+		return fmt.Sprintf("[%s:%2d]", m.charSuit, m.num)
 	}
-
-	card.num = CARDS_WITHOUT_SKIP[index][CARD_NUMBER_INDEX]
-	card.val = CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX]
-	card.score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
-
-	return card
 }
 
 func newBottomCard(c card) card {
@@ -112,9 +102,10 @@ func newBottomCard(c card) card {
 	swapNum := 2
 	index := swapNum - 1
 	return card{
-		suit:  c.suit,
-		num:   swapNum,
-		val:   CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX],
-		score: CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX],
+		emojiSuit: c.emojiSuit,
+		charSuit:  c.charSuit,
+		num:       swapNum,
+		val:       CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX],
+		score:     CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX],
 	}
 }

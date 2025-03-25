@@ -31,6 +31,8 @@ type playerModel struct {
 	handSize  int
 	boxX      int
 	boxY      int
+
+	renderEmoji bool
 }
 
 func (pm playerModel) UpdateScore() int {
@@ -42,22 +44,24 @@ func (pm playerModel) UpdateScore() int {
 	return score
 }
 
-func newPlayerModelFromSeat(s seat) playerModel {
+func newPlayerModelFromSeat(s seat, renderEmoji bool) playerModel {
 	return playerModel{
-		name:      s.Username,
-		score:     0,
-		scorePile: []card{},
-		handSize:  3,
+		name:        s.Username,
+		score:       0,
+		scorePile:   []card{},
+		handSize:    3,
+		renderEmoji: renderEmoji,
 	}
 }
 
-func newPlayerModel() playerModel {
+func newPlayerModel(renderEmoji bool) playerModel {
 	return playerModel{
-		name:      "Username",
-		score:     0,
-		scorePile: []card{},
-		boxX:      2, // Coords for mySeat
-		boxY:      1, // Coords for mySeat
+		name:        "Username",
+		score:       0,
+		scorePile:   []card{},
+		boxX:        2, // Coords for mySeat
+		boxY:        1, // Coords for mySeat
+		renderEmoji: renderEmoji,
 	}
 }
 
@@ -94,7 +98,7 @@ rowLoop:
 			if !(index < spSize) {
 				break rowLoop // Breaks out of both loops
 			}
-			spString += pm.scorePile[reverseStart-index].renderCard()
+			spString += pm.scorePile[reverseStart-index].renderCard(pm.renderEmoji)
 		}
 		spString += "\n  " // paddingBothSides
 	}

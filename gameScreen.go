@@ -170,13 +170,13 @@ func newGSModel(userGlobal userGlobal) gsModel {
 	}
 	m.hand = []card{}
 	m.playerSeats = []playerModel{
-		newPlayerModel(),
-		newPlayerModel(),
-		newPlayerModel(),
-		newPlayerModel(),
+		newPlayerModel(m.userGlobal.renderEmoji),
+		newPlayerModel(m.userGlobal.renderEmoji),
+		newPlayerModel(m.userGlobal.renderEmoji),
+		newPlayerModel(m.userGlobal.renderEmoji),
 	}
-	m.table = newTableModel()
-	m.statusBar = newStatusBar(m.playerSeats)
+	m.table = newTableModel(userGlobal.renderEmoji)
+	m.statusBar = newStatusBar(m.playerSeats, userGlobal.renderEmoji)
 	m.help = newGSHelp()
 	m.cheatSheet = NewCheatSheetModel()
 	return m
@@ -368,7 +368,7 @@ func (m gsModel) processSeats(seats []seat) tea.Cmd {
 	return func() tea.Msg {
 		var seatsMsg seatsMsg
 		for i := range seats {
-			player := newPlayerModelFromSeat(seats[i])
+			player := newPlayerModelFromSeat(seats[i], m.userGlobal.renderEmoji)
 			// This part only works because case mySeat: happens first then seatsMsg
 			adjustedSeat := (i - m.statusBar.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
 			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.statusBar.turn, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
@@ -498,9 +498,9 @@ func (m *gsModel) handView() string {
 	for i := range m.hand {
 		card := (m.hand)[i]
 		if m.selectedCard == i {
-			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(card.renderCard()))
+			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(card.renderCard(m.userGlobal.renderEmoji)))
 		} else {
-			s += fmt.Sprintf("%2d:%s", i+1, card.renderCard())
+			s += fmt.Sprintf("%2d:%s", i+1, card.renderCard(m.userGlobal.renderEmoji))
 		}
 	}
 	return s
@@ -568,7 +568,7 @@ func (m *gsModel) swapBottomCard() tea.Cmd {
 
 func (m *gsModel) swapCheck() {
 	if m.table.deckSize > 1 && slices.ContainsFunc(m.hand, func(c card) bool {
-		return c.num == m.statusBar.swapCard.num && c.suit == m.statusBar.swapCard.suit
+		return c.num == m.statusBar.swapCard.num && c.charSuit == m.statusBar.swapCard.charSuit
 	}) {
 		m.statusBar.canSwap = true
 		m.help.keys.showSwap = true

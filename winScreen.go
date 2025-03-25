@@ -60,21 +60,21 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 
 	switch gc.MaxPlayers {
 	case 2:
-		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile)
-		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile)
+		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.renderEmoji)
+		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.renderEmoji)
 		scSize = 2
 		winString = players[gameWon.Seat].name + " won!!!"
 	case 3:
-		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile)
-		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile)
-		thirdScoreCounter = newScoreCounter(2, players[2].name, players[2].scorePile)
+		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.renderEmoji)
+		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.renderEmoji)
+		thirdScoreCounter = newScoreCounter(2, players[2].name, players[2].scorePile, userGlobal.renderEmoji)
 		scSize = 3
 		winString = players[gameWon.Seat].name + " won!!!"
 	case 4:
 		teamAString := fmt.Sprintf("Team A:\n %s and %s", players[0].name, players[2].name)
 		teamBString := fmt.Sprintf("Team B:\n %s and %s", players[1].name, players[3].name)
-		firstScoreCounter = newScoreCounter(0, "Team A", append(players[0].scorePile, players[2].scorePile...))
-		secondScoreCounter = newScoreCounter(1, "Team B", append(players[1].scorePile, players[3].scorePile...))
+		firstScoreCounter = newScoreCounter(0, "Team A", append(players[0].scorePile, players[2].scorePile...), userGlobal.renderEmoji)
+		secondScoreCounter = newScoreCounter(1, "Team B", append(players[1].scorePile, players[3].scorePile...), userGlobal.renderEmoji)
 		scSize = 2
 		switch gameWon.Team {
 		case "A":
