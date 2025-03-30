@@ -76,7 +76,6 @@ type turnSwitchPayload struct{}
 type action struct {
 	Type    string  `json:"type"`
 	Payload Payload `json:"payload"`
-	slow    time.Duration
 }
 
 type Payload any
@@ -84,16 +83,38 @@ type Payload any
 type innerAction struct {
 	Type    string         `json:"type"`
 	Payload map[string]any `json:"payload"`
-	slow    time.Duration
 }
 
-func newInnerAction() innerAction {
-	return innerAction{slow: COMMON_WAIT}
-}
-
-func (a action) processAction() tea.Cmd {
+func (a action) processAction(myTurn, gameOver bool, mySeat int) tea.Cmd {
 	return func() tea.Msg {
-		time.Sleep(a.slow)
+		slow := COMMON_WAIT
+		switch payload := a.Payload.(type) {
+		case gameConfigPayload:
+			slow = 0
+		case gameStartedPayload:
+			slow = 0
+		case bottomCardSelectedPayload:
+			slow = 0
+		case gracePeriodEndedPayload:
+		case swapBottomCardPayload:
+			if myTurn && !gameOver {
+				slow = 0
+			}
+		case cardDrawnPayload:
+			slow = time.Millisecond * 200
+		case cardPlayedPayload:
+			if payload.Seat == mySeat && !gameOver {
+				slow = 0
+			}
+		case turnWonPayload:
+		case gameWonPayload:
+
+		// Client side actions
+		case turnSwitchPayload:
+			slow = time.Millisecond * 200
+
+		}
+		time.Sleep(slow)
 		return a.Payload
 	}
 }
@@ -137,7 +158,7 @@ func findOcurrence(bytes []byte, char byte, ocurrence int, dir int) int {
 }
 
 func (a *action) UnmarshalJSON(b []byte) error {
-	ia := newInnerAction()
+	var ia innerAction
 	err := json.Unmarshal(b, &ia)
 	if err != nil {
 		return err
@@ -145,7 +166,6 @@ func (a *action) UnmarshalJSON(b []byte) error {
 
 	a.Type = ia.Type
 	a.Payload = ia.Payload
-	a.slow = ia.slow
 
 	to := findOcurrence(b, '{', 2, 1)
 	from := findOcurrence(b, '}', 2, -1)
@@ -162,7 +182,6 @@ func (a *action) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		a.Payload = gameConfig
-		a.slow = time.Millisecond
 	case "GAME_STARTED":
 		gameStarted := gameStartedPayload{}
 		err := json.Unmarshal(payloadBytes, &gameStarted)
@@ -170,7 +189,6 @@ func (a *action) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		a.Payload = gameStarted
-		a.slow = time.Millisecond
 	case "BOTTOM_CARD_SELECTED":
 		bottomCard := bottomCardSelectedPayload{}
 		err := json.Unmarshal(payloadBytes, &bottomCard)
@@ -179,7 +197,6 @@ func (a *action) UnmarshalJSON(b []byte) error {
 		}
 		bottomCard.bottomCard = newCard(bottomCard.BottomCard)
 		a.Payload = bottomCard
-		a.slow = time.Millisecond
 	case "GRACE_PERIOD_ENDED":
 		a.Payload = gracePeriodEndedPayload{}
 	case "SWAP_BOTTOM_CARD":
@@ -191,7 +208,6 @@ func (a *action) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		a.Payload = cardDrawn
-		a.slow = time.Millisecond * 200
 	case "CARD_PLAYED":
 		cardPlayed := cardPlayedPayload{}
 		err := json.Unmarshal(payloadBytes, &cardPlayed)

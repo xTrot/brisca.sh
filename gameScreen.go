@@ -84,7 +84,7 @@ func injectClientActions(fetched []action) ([]action, bool) {
 		switch a.Payload.(type) {
 		case cardPlayedPayload:
 			before = false
-			clientAction = action{Type: "turn_switch", slow: time.Millisecond * 200, Payload: turnSwitchPayload{}}
+			clientAction = action{Type: "turn_switch", Payload: turnSwitchPayload{}}
 		case gameWonPayload:
 			gameOver = true
 		default:
@@ -102,10 +102,12 @@ func injectClientActions(fetched []action) ([]action, bool) {
 	return effective, gameOver
 }
 
-func (ac *actionCache) ProcessAction() tea.Cmd {
-	if len(ac.actions) > ac.processing+1 && ac.processing == ac.processed {
-		ac.processing++
-		cmd := ac.actions[ac.processing].processAction()
+func (m *gsModel) ProcessAction() tea.Cmd {
+	if len(m.actionCache.actions) > m.actionCache.processing+1 &&
+		m.actionCache.processing == m.actionCache.processed {
+		m.actionCache.processing++
+		cmd := m.actionCache.actions[m.actionCache.processing].
+			processAction(m.statusBar.isMyTurn(), m.gameOver, m.statusBar.mySeat)
 		return cmd
 	} else {
 		return nil
@@ -221,7 +223,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmd = m.Refresh()
 		cmds = append(cmds, cmd)
-		cmd = m.actionCache.ProcessAction()
+		cmd = m.ProcessAction()
 		cmds = append(cmds, cmd)
 	case tea.KeyMsg:
 		switch {
