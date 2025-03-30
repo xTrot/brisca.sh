@@ -5,11 +5,12 @@ import (
 	"slices"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/timer"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	"github.com/charmbracelet/bubbles/v2/timer"
+	v1tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/log"
 )
 
@@ -138,6 +139,11 @@ func newReplayGSModel(userGlobal userGlobal, actions []action) gsModel {
 	m.actionCache.actions, m.gameOver = injectClientActions(actions)
 
 	return m
+}
+
+func newV1ReplayGSModel(userGlobal userGlobal, actions []action) v1GSModel {
+	m := newReplayGSModel(userGlobal, actions)
+	return v1GSModel{m}
 }
 
 func newGSModel(userGlobal userGlobal) gsModel {
@@ -578,4 +584,20 @@ func (m *gsModel) swapCheck() {
 		m.statusBar.canSwap = false
 		m.help.keys.showSwap = false
 	}
+}
+
+type v1GSModel struct {
+	model gsModel
+}
+
+func (m v1GSModel) Init() v1tea.Cmd {
+	return m.Init()
+}
+
+func (m v1GSModel) Update(msg v1tea.Msg) (v1tea.Model, v1tea.Cmd) {
+	return m.Update(msg)
+}
+
+func (m v1GSModel) View() string {
+	return m.View()
 }

@@ -12,12 +12,12 @@ import (
 
 	gossh "golang.org/x/crypto/ssh"
 
-	tea "github.com/charmbracelet/bubbletea"
+	v1tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/activeterm"
-	"github.com/charmbracelet/wish/bubbletea"
+	wishtea "github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
 
 	"github.com/kelseyhightower/envconfig"
@@ -52,7 +52,7 @@ func main() {
 		wish.WithKeyboardInteractiveAuth(skipThis()), // If this isn't added the PubKeyAuth will require a key.
 		// This makes make PubKey Auth optional
 		wish.WithMiddleware(
-			bubbletea.Middleware(teaHandler),
+			wishtea.Middleware(teaHandler),
 			activeterm.Middleware(), // Bubble Tea apps usually require a PTY.
 			AuthMiddleware(),
 			logging.Middleware(),
@@ -100,7 +100,7 @@ func skipThis() ssh.KeyboardInteractiveHandler {
 // handles the incoming ssh.Session. Here we just grab the terminal info and
 // pass it to the new model. You can also return tea.ProgramOptions (such as
 // tea.WithAltScreen) on a session by session basis.
-func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
+func teaHandler(s ssh.Session) (v1tea.Model, []v1tea.ProgramOption) {
 
 	// When running a Bubble Tea app over SSH, you shouldn't use the default
 	// lipgloss.NewStyle function.
@@ -114,7 +114,8 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	// renderer := bubbletea.MakeRenderer(s)
 
 	m := newModel(&s)
-	return m, []tea.ProgramOption{tea.WithAltScreen()}
+	v1m := v1RegisterModel{model: m}
+	return v1m, []v1tea.ProgramOption{v1tea.WithAltScreen()}
 }
 
 type keyMiddleware wish.Middleware

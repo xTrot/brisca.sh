@@ -5,9 +5,10 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/textinput"
+	v1tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish/bubbletea"
@@ -66,7 +67,7 @@ func newModel(session *ssh.Session) registerModel {
 	m.textInput.Placeholder = "Guest"
 	m.textInput.Focus()
 	m.textInput.CharLimit = 25
-	m.textInput.Width = 20
+	m.textInput.SetWidth(20)
 	m.textInput.Prompt = "\tWhat's your username?\n\t\t> "
 	m.help = newHelp()
 	m.userGlobal = userGlobal{
@@ -169,4 +170,20 @@ func registerView(m registerModel) string {
 		m.registerStyle.Render(inside))
 	s += m.helpStyle.Render(m.help.View())
 	return s
+}
+
+type v1RegisterModel struct {
+	model registerModel
+}
+
+func (m v1RegisterModel) Init() v1tea.Cmd {
+	return m.Init()
+}
+
+func (m v1RegisterModel) Update(msg v1tea.Msg) (v1tea.Model, v1tea.Cmd) {
+	return m.Update(msg)
+}
+
+func (m v1RegisterModel) View() string {
+	return m.View()
 }

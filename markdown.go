@@ -5,10 +5,10 @@ import (
 	"log"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/viewport"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 var (
@@ -27,7 +27,7 @@ var (
 	infoStyle = func() lipgloss.Style {
 		b := lipgloss.RoundedBorder()
 		b.Left = "┤"
-		return titleStyle.BorderStyle(b)
+		return viewPortTitleStyle.BorderStyle(b)
 	}()
 )
 
@@ -66,7 +66,10 @@ func NewFullHelpModel() MarkdownModel {
 func NewMarkdownModel(text string, static bool, title string) MarkdownModel {
 	var vp viewport.Model
 	if !static {
-		vp = viewport.New(24, 80)
+		vp = viewport.New(
+			viewport.WithHeight(24),
+			viewport.WithWidth(80),
+		)
 	}
 
 	renderer, _ := glamour.NewTermRenderer(
@@ -107,7 +110,10 @@ func (m MarkdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// we can initialize the viewport. The initial dimensions come in
 			// quickly, though asynchronously, which is why we wait for them
 			// here.
-			m.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
+			m.viewport = viewport.New(
+				viewport.WithHeight(msg.Width),
+				viewport.WithWidth(msg.Height-verticalMarginHeight),
+			)
 			m.viewport.YPosition = headerHeight
 			out, err := m.renderer.Render(
 				m.Text)
@@ -118,8 +124,8 @@ func (m MarkdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent(out)
 			m.ready = true
 		} else {
-			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - verticalMarginHeight
+			m.viewport.SetWidth(msg.Width)
+			m.viewport.SetHeight(msg.Height - verticalMarginHeight)
 		}
 	}
 
@@ -153,14 +159,14 @@ func (m MarkdownModel) ViewViewPort() string {
 func (m MarkdownModel) headerView() string {
 	extraLine := "──"
 	title := titleStyle.Render(m.Title)
-	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title)-2))
+	line := strings.Repeat("─", max(0, m.viewport.Width()-lipgloss.Width(title)-2))
 	return lipgloss.JoinHorizontal(lipgloss.Center, extraLine, title, line)
 }
 
 func (m MarkdownModel) footerView() string {
 	extraLine := "──"
 	info := infoStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(info)-2))
+	line := strings.Repeat("─", max(0, m.viewport.Width()-lipgloss.Width(info)-2))
 	s := lipgloss.JoinHorizontal(lipgloss.Center, line, info, extraLine)
 	return lipgloss.JoinVertical(lipgloss.Center, s, exitStyle.Render("H exit this Help"))
 }

@@ -6,10 +6,11 @@ package main
 import (
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/list"
+	v1tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/log"
 )
 
@@ -109,6 +110,11 @@ func newWaitingRoom(userGlobal userGlobal) waitingRoomModel {
 	wrm.list.SetShowStatusBar(false)
 	wrm.list.SetShowPagination(false)
 	return wrm
+}
+
+func newV1WaitingRoom(userGlobal userGlobal) v1WaitingRoomModel {
+	wrm := newWaitingRoom(userGlobal)
+	return v1WaitingRoomModel{model: wrm}
 }
 
 func (m waitingRoomModel) Init() tea.Cmd {
@@ -250,4 +256,20 @@ func (m *waitingRoomModel) changeTeam(spectator bool) tea.Cmd {
 		success := changedTeamMsg(m.userGlobal.rh.changeTeamRequest(spectator))
 		return success
 	}
+}
+
+type v1WaitingRoomModel struct {
+	model waitingRoomModel
+}
+
+func (m v1WaitingRoomModel) Init() v1tea.Cmd {
+	return m.Init()
+}
+
+func (m v1WaitingRoomModel) Update(msg v1tea.Msg) (v1tea.Model, v1tea.Cmd) {
+	return m.Update(msg)
+}
+
+func (m v1WaitingRoomModel) View() string {
+	return m.View()
 }

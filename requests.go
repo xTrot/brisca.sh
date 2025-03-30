@@ -9,7 +9,7 @@ import (
 	"net/http/cookiejar"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/v2/list"
 	"github.com/charmbracelet/log"
 )
 

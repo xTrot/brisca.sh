@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	v2tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
 )
@@ -58,6 +59,11 @@ func newMakeGame(nv tea.Model, userGlobal userGlobal) makeGameModel {
 	}
 }
 
+func newV2MakeGame(nv tea.Model, userGlobal userGlobal) v2MakeGameModel {
+	m := newMakeGame(nv, userGlobal)
+	return v2MakeGameModel{model: m}
+}
+
 func (m makeGameModel) Init() tea.Cmd {
 	return m.form.Init()
 }
@@ -97,8 +103,8 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Fatal(err)
 		}
 
-		wrm := newWaitingRoom(m.userGlobal)
-		wrm.list.Title = "GameID: " + game.GameId
+		wrm := newV1WaitingRoom(m.userGlobal)
+		wrm.model.list.Title = "GameID: " + game.GameId
 		cmd = wrm.Init()
 		return wrm, cmd
 	}
@@ -123,4 +129,20 @@ func (m makeGameModel) View() string {
 	} else {
 		return m.form.View()
 	}
+}
+
+type v2MakeGameModel struct {
+	model makeGameModel
+}
+
+func (m v2MakeGameModel) Init() v2tea.Cmd {
+	return m.Init()
+}
+
+func (m v2MakeGameModel) Update(msg v2tea.Msg) (v2tea.Model, v2tea.Cmd) {
+	return m.Update(msg)
+}
+
+func (m v2MakeGameModel) View() string {
+	return m.View()
 }
