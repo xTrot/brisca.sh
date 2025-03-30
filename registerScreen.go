@@ -7,11 +7,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/bubbles/v2/textinput"
-	v1tea "github.com/charmbracelet/bubbletea"
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish/bubbletea"
 )
 
 /*
@@ -47,7 +45,6 @@ type registerModel struct {
 
 type userGlobal struct {
 	session     ssh.Session
-	renderer    *lipgloss.Renderer
 	sizeMsg     tea.WindowSizeMsg
 	username    string
 	rh          requestHandler
@@ -72,20 +69,19 @@ func newModel(session *ssh.Session) registerModel {
 	m.help = newHelp()
 	m.userGlobal = userGlobal{
 		session:     *session,
-		renderer:    bubbletea.MakeRenderer(*session),
 		rh:          newRequestHandler(),
 		renderEmoji: true,
 	}
 	m.isUp = m.userGlobal.rh.statusRequest()
 
-	m.upStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("10"))
-	m.downStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("9"))
-	m.helpStyle = m.userGlobal.renderer.NewStyle().
+	m.upStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	m.downStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	m.helpStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241")).
 		Width(75).Height(5).
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.HiddenBorder())
-	m.registerStyle = m.userGlobal.renderer.NewStyle().
+	m.registerStyle = lipgloss.NewStyle().
 		Width(75).Height(15).
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.NormalBorder()).
@@ -170,20 +166,4 @@ func registerView(m registerModel) string {
 		m.registerStyle.Render(inside))
 	s += m.helpStyle.Render(m.help.View())
 	return s
-}
-
-type v1RegisterModel struct {
-	model registerModel
-}
-
-func (m v1RegisterModel) Init() v1tea.Cmd {
-	return m.Init()
-}
-
-func (m v1RegisterModel) Update(msg v1tea.Msg) (v1tea.Model, v1tea.Cmd) {
-	return m.Update(msg)
-}
-
-func (m v1RegisterModel) View() string {
-	return m.View()
 }

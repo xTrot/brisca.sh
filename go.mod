@@ -1,14 +1,13 @@
 module brisca.sh/m/v2
 
-go 1.23.5
+go 1.24.1
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.4
-	github.com/charmbracelet/huh v0.6.0
-	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/log v0.4.0
 	github.com/charmbracelet/ssh v0.0.0-20250128164007-98fd5ae11894
-	github.com/charmbracelet/wish v1.4.6
+	github.com/charmbracelet/wish/v2 v2.0.0-20250328000358-93bac50f7f6a
+	golang.org/x/crypto v0.36.0
 )
 
 require (
@@ -17,6 +16,8 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/charmbracelet/colorprofile v0.3.0 // indirect
 	github.com/charmbracelet/keygen v0.5.1 // indirect
+	github.com/charmbracelet/lipgloss v1.1.0 // indirect
+	github.com/charmbracelet/log/v2 v2.0.0-20250226163916-c379e29ff706 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
 	github.com/charmbracelet/x/conpty v0.1.0 // indirect
 	github.com/charmbracelet/x/errors v0.0.0-20240508181413-e8d8b6e2de86 // indirect
@@ -31,7 +32,6 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/goldmark v1.7.8 // indirect
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 )
@@ -50,10 +50,11 @@ require (
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/charmbracelet/bubbles v0.20.0
+	github.com/charmbracelet/bubbles v0.20.0 // indirect
 	github.com/charmbracelet/bubbles/v2 v2.0.0-beta.1
 	github.com/charmbracelet/bubbletea/v2 v2.0.0-beta1
 	github.com/charmbracelet/glamour v0.9.1
+	github.com/charmbracelet/huh v0.6.0
 	github.com/charmbracelet/huh/spinner v0.0.0-20241108235012-6092b3ba5e33
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta1
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect

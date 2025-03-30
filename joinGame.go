@@ -4,8 +4,7 @@ import (
 	"context"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	v2tea "github.com/charmbracelet/bubbletea/v2"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/charmbracelet/log"
@@ -52,26 +51,29 @@ func newJoinGame(nv tea.Model, userGlobal userGlobal) joinGameModel {
 	}
 }
 
-func newV2ReplayGame(nv tea.Model, userGlobal userGlobal) v2JoinGameModel {
-	m := newReplayGame(nv, userGlobal)
-	return v2JoinGameModel{m}
-}
-
-func newV2JoinGame(nv tea.Model, userGlobal userGlobal) v2JoinGameModel {
-	m := newJoinGame(nv, userGlobal)
-	return v2JoinGameModel{m}
-}
-
 func (m joinGameModel) Init() tea.Cmd {
-	return m.form.Init()
+	return func() tea.Msg {
+		function := m.form.Init()
+		if function != nil {
+			return function()
+		}
+		return nil
+	}
 }
 
 func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
-	form, cmd := m.form.Update(msg)
+	var cmd tea.Cmd
+	form, v1cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
+	}
+
+	if v1cmd != nil {
+		cmd = func() tea.Msg {
+			return v1cmd()
+		}
 	}
 
 	if m.form.State == huh.StateCompleted {
@@ -95,7 +97,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			replay := m.userGlobal.rh.replayRequest(gameId)
 
 			if replay != nil {
-				rgs := newV1ReplayGSModel(m.userGlobal, replay)
+				rgs := newReplayGSModel(m.userGlobal, replay)
 				return rgs, rgs.Init()
 			} else {
 				return m.nextView, m.nextView.Init()
@@ -105,9 +107,12 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		joined := m.userGlobal.rh.joinGameRequest(gameId)
 
 		if joined {
-			wrm := newV1WaitingRoom(m.userGlobal)
-			wrm.model.list.Title = "GameID: " + gameId.GameId
-			cmd = wrm.Init()
+			wrm := newWaitingRoom(m.userGlobal)
+			wrm.list.Title = "GameID: " + gameId.GameId
+			cmd = func() tea.Msg {
+				funtion := wrm.Init()
+				return funtion()
+			}
 			return wrm, cmd
 		} else {
 			return m.nextView, m.nextView.Init()
@@ -129,20 +134,4 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m joinGameModel) View() string {
 	return m.form.View()
-}
-
-type v2JoinGameModel struct {
-	model joinGameModel
-}
-
-func (m v2JoinGameModel) Init() v2tea.Cmd {
-	return m.Init()
-}
-
-func (m v2JoinGameModel) Update(msg v2tea.Msg) (v2tea.Model, v2tea.Cmd) {
-	return m.Update(msg)
-}
-
-func (m v2JoinGameModel) View() string {
-	return m.View()
 }

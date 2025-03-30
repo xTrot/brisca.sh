@@ -12,13 +12,13 @@ import (
 
 	gossh "golang.org/x/crypto/ssh"
 
-	v1tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
-	"github.com/charmbracelet/wish/activeterm"
-	wishtea "github.com/charmbracelet/wish/bubbletea"
-	"github.com/charmbracelet/wish/logging"
+	"github.com/charmbracelet/wish/v2"
+	"github.com/charmbracelet/wish/v2/activeterm"
+	wishtea "github.com/charmbracelet/wish/v2/bubbletea"
+	"github.com/charmbracelet/wish/v2/logging"
 
 	"github.com/kelseyhightower/envconfig"
 )
@@ -100,7 +100,7 @@ func skipThis() ssh.KeyboardInteractiveHandler {
 // handles the incoming ssh.Session. Here we just grab the terminal info and
 // pass it to the new model. You can also return tea.ProgramOptions (such as
 // tea.WithAltScreen) on a session by session basis.
-func teaHandler(s ssh.Session) (v1tea.Model, []v1tea.ProgramOption) {
+func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 
 	// When running a Bubble Tea app over SSH, you shouldn't use the default
 	// lipgloss.NewStyle function.
@@ -114,8 +114,7 @@ func teaHandler(s ssh.Session) (v1tea.Model, []v1tea.ProgramOption) {
 	// renderer := bubbletea.MakeRenderer(s)
 
 	m := newModel(&s)
-	v1m := v1RegisterModel{model: m}
-	return v1m, []v1tea.ProgramOption{v1tea.WithAltScreen()}
+	return m, []tea.ProgramOption{tea.WithAltScreen()}
 }
 
 type keyMiddleware wish.Middleware

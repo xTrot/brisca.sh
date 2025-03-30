@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/bubbles/v2/help"
 	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/bubbles/v2/list"
-	v1tea "github.com/charmbracelet/bubbletea"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/lipgloss/v2/compat"
@@ -206,13 +205,13 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, m.keys.insertItem):
-			mg := newV2MakeGame(v1LobbyModel{m}, m.userGlobal)
+			mg := newMakeGame(m, m.userGlobal)
 			return mg, mg.Init()
 		case key.Matches(msg, m.keys.joinGame):
-			jg := newV2JoinGame(v1LobbyModel{m}, m.userGlobal)
+			jg := newJoinGame(m, m.userGlobal)
 			return jg, jg.Init()
 		case key.Matches(msg, m.keys.replayGame):
-			rg := newV2ReplayGame(v1LobbyModel{m}, m.userGlobal)
+			rg := newReplayGame(m, m.userGlobal)
 			return rg, rg.Init()
 		case key.Matches(msg, m.keys.emoji):
 			if m.userGlobal.renderEmoji {
@@ -276,20 +275,4 @@ func (m *lobbyModel) joinGame(title string) tea.Cmd {
 			return nil
 		}
 	}
-}
-
-type v1LobbyModel struct {
-	model lobbyModel
-}
-
-func (m v1LobbyModel) Init() v1tea.Cmd {
-	return m.Init()
-}
-
-func (m v1LobbyModel) Update(msg v1tea.Msg) (v1tea.Model, v1tea.Cmd) {
-	return m.Update(msg)
-}
-
-func (m v1LobbyModel) View() string {
-	return m.View()
 }
