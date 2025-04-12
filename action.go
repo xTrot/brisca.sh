@@ -71,7 +71,13 @@ type gameWonPayload struct {
 	Team string `json:"team"`
 }
 
+// Client side action payloads
+// ============================================================================
 type turnSwitchPayload struct{}
+
+type undefinedActionPayload struct{}
+
+// ============================================================================
 
 type action struct {
 	Type    string  `json:"type"`
@@ -231,7 +237,8 @@ func (a *action) UnmarshalJSON(b []byte) error {
 		}
 		a.Payload = gameWon
 	default:
-		log.Errorf("action.UnmarshalJSON: unexpected type; type = %s)", a.Type)
+		log.Errorf("action.UnmarshalJSON: unexpected type: type = %s", a.Type)
+		a.Payload = undefinedActionPayload{}
 	}
 
 	return nil

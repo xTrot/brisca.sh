@@ -347,6 +347,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.actionCache.processed++
 		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
 		return ws, ws.Init()
+	case undefinedActionPayload:
+		m.actionCache.processed++
 
 	case seatsMsg:
 		m.playerSeats = msg
