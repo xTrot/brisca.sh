@@ -85,25 +85,25 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		if m.cardsPlayed < m.maxPlayers {
 			m.turn = (m.turn + 1) % m.maxPlayers
 		}
-		var timerLenght time.Duration
+		var timerLength time.Duration
 		if m.players[m.turn].afk {
-			timerLenght = AFK_TURN_LENGTH
+			timerLength = AFK_TURN_LENGTH
 		} else {
-			timerLenght = TURN_LENGTH
+			timerLength = TURN_LENGTH
 		}
-		m.timer = timer.New(timerLenght)
+		m.timer = timer.New(timerLength)
 		cmds = append(cmds, m.timer.Init())
 	case turnWonPayload:
 		m.iPlayed = false
 		m.cardsPlayed = 0
 		m.turn = msg.Seat
-		var timerLenght time.Duration
+		var timerLength time.Duration
 		if m.players[m.turn].afk {
-			timerLenght = AFK_TURN_LENGTH
+			timerLength = AFK_TURN_LENGTH
 		} else {
-			timerLenght = TURN_LENGTH
+			timerLength = TURN_LENGTH
 		}
-		m.timer = timer.New(timerLenght)
+		m.timer = timer.New(timerLength)
 		cmds = append(cmds, m.timer.Init())
 	case seatAfkPayload:
 		m.players[msg.Seat].afk = true
