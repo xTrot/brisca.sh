@@ -31,6 +31,7 @@ type playerModel struct {
 	handSize  int
 	boxX      int
 	boxY      int
+	afk       bool
 
 	renderEmoji bool
 }
@@ -51,6 +52,7 @@ func newPlayerModelFromSeat(s seat, renderEmoji bool) playerModel {
 		scorePile:   []card{},
 		handSize:    3,
 		renderEmoji: renderEmoji,
+		afk:         false,
 	}
 }
 

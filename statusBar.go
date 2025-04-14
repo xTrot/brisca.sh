@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	statusString = "Status: Your Turn, timer: %s"
-	TURN_LENGTH  = time.Second * 59 // Actually one minute
-	GRACE_LENGTH = time.Second * 9  // Actually ten seconds
+	statusString    = "Status: Your Turn, timer: %s"
+	TURN_LENGTH     = time.Second * 59 // Actually one minute
+	GRACE_LENGTH    = time.Second * 9  // Actually ten seconds
+	AFK_TURN_LENGTH = time.Second * 4  // Actually five seconds
 )
 
 type statusBarModel struct {
@@ -84,14 +85,30 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		if m.cardsPlayed < m.maxPlayers {
 			m.turn = (m.turn + 1) % m.maxPlayers
 		}
-		m.timer = timer.New(TURN_LENGTH)
+		var timerLenght time.Duration
+		if m.players[m.turn].afk {
+			timerLenght = AFK_TURN_LENGTH
+		} else {
+			timerLenght = TURN_LENGTH
+		}
+		m.timer = timer.New(timerLenght)
 		cmds = append(cmds, m.timer.Init())
 	case turnWonPayload:
 		m.iPlayed = false
 		m.cardsPlayed = 0
 		m.turn = msg.Seat
-		m.timer = timer.New(TURN_LENGTH)
+		var timerLenght time.Duration
+		if m.players[m.turn].afk {
+			timerLenght = AFK_TURN_LENGTH
+		} else {
+			timerLenght = TURN_LENGTH
+		}
+		m.timer = timer.New(timerLenght)
 		cmds = append(cmds, m.timer.Init())
+	case seatAfkPayload:
+		m.players[msg.Seat].afk = true
+	case seatNotAfkPayload:
+		m.players[msg.Seat].afk = false
 	}
 
 	return m, tea.Batch(cmds...)

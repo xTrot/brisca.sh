@@ -22,7 +22,9 @@ const (
 // 	CARD_DRAWN,
 // 	CARD_PLAYED,
 // 	TURN_WON,
-// 	GAME_WON
+// 	GAME_WON,
+//  SEAT_AFK,
+//  SEAT_NOT_AFK,
 // }
 
 type gameConfigPayload struct {
@@ -69,6 +71,14 @@ type turnWonPayload struct {
 type gameWonPayload struct {
 	Seat int    `json:"seat"`
 	Team string `json:"team"`
+}
+
+type seatAfkPayload struct {
+	Seat int `json:"seat"`
+}
+
+type seatNotAfkPayload struct {
+	Seat int `json:"seat"`
 }
 
 // Client side action payloads
@@ -236,6 +246,10 @@ func (a *action) UnmarshalJSON(b []byte) error {
 			return err
 		}
 		a.Payload = gameWon
+	case "SEAT_AFK":
+		a.Payload = seatAfkPayload{}
+	case "SEAT_NOT_AFK":
+		a.Payload = seatNotAfkPayload{}
 	default:
 		log.Errorf("action.UnmarshalJSON: unexpected type: type = %s", a.Type)
 		a.Payload = undefinedActionPayload{}

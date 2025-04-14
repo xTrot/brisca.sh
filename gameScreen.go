@@ -349,6 +349,14 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return ws, ws.Init()
 	case undefinedActionPayload:
 		m.actionCache.processed++
+	case seatAfkPayload:
+		m.actionCache.processed++
+		m.playerSeats[msg.Seat].afk = true
+		m.statusBar, cmd = m.statusBar.Update(msg)
+	case seatNotAfkPayload:
+		m.actionCache.processed++
+		m.playerSeats[msg.Seat].afk = true
+		m.statusBar, cmd = m.statusBar.Update(msg)
 
 	case seatsMsg:
 		m.playerSeats = msg
