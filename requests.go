@@ -72,6 +72,7 @@ type waitingRoom struct {
 	Players []player `json:"players"`
 	Fill    string   `json:"fill"`
 	Started bool     `json:"started"`
+	Type    string   `json:"type"`
 	items   []list.Item
 	teams   bool
 }
@@ -263,7 +264,7 @@ func (m requestHandler) waitingRoomRequest() waitingRoom {
 
 	waitingroom.items = items
 
-	if waitingroom.Fill[2] == '4' {
+	if waitingroom.Fill[2] == '4' && waitingroom.Type != "solo" {
 		waitingroom.teams = true
 	}
 
