@@ -81,7 +81,7 @@ rowLoop:
 			if !(index < cipSize) {
 				break rowLoop
 			}
-			cip += fmt.Sprintf("%s", tm.cardsInPlay[index].renderCard(tm.renderEmoji))
+			cip += tm.cardsInPlay[index].renderCard(tm.renderEmoji)
 		}
 		cip += padding
 	}

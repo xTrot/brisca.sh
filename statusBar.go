@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	statusString    = "Status: Your Turn, timer: %s"
 	TURN_LENGTH     = time.Second * 59 // Actually one minute
 	GRACE_LENGTH    = time.Second * 9  // Actually ten seconds
 	AFK_TURN_LENGTH = time.Second * 4  // Actually five seconds

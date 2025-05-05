@@ -353,10 +353,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.actionCache.processed++
 		m.playerSeats[msg.Seat].afk = true
 		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 	case seatNotAfkPayload:
 		m.actionCache.processed++
 		m.playerSeats[msg.Seat].afk = true
 		m.statusBar, cmd = m.statusBar.Update(msg)
+		cmds = append(cmds, cmd)
 
 	case seatsMsg:
 		m.playerSeats = msg

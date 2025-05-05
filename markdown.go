@@ -19,11 +19,6 @@ var (
 			Foreground(lipgloss.Color("241")).
 			Height(1).Padding(0).Margin(0)
 
-	viewPortTitleStyle = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Right = "├"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
-	}()
 	infoStyle = func() lipgloss.Style {
 		b := lipgloss.RoundedBorder()
 		b.Left = "┤"

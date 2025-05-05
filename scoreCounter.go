@@ -10,10 +10,6 @@ import (
 	"golang.org/x/exp/rand"
 )
 
-var (
-	scoreCounterStyle = lipgloss.NewStyle()
-)
-
 type scoreCounter struct {
 	index        int
 	name         string
@@ -73,8 +69,6 @@ func (m scoreCounter) noCards() tea.Cmd {
 		return doneCounting{m.index}
 	}
 }
-
-type stopSpinnerMsg tea.Msg
 
 func (m scoreCounter) Update(msg tea.Msg) (scoreCounter, tea.Cmd) {
 	switch msg := msg.(type) {

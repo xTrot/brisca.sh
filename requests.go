@@ -13,10 +13,6 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-var (
-	baseurl = "http://localhost:8000"
-)
-
 type requestHandler struct {
 	jar *cookiejar.Jar
 }
@@ -115,7 +111,7 @@ type handIndex struct {
 }
 
 func (m requestHandler) statusRequest() bool {
-	requestURL := fmt.Sprintf("%s/status", baseurl)
+	requestURL := fmt.Sprintf("%s/status", env.Server)
 	res, err := http.Get(requestURL)
 	if err != nil {
 		log.Error("error making http request: %s\n", err)
@@ -134,7 +130,7 @@ func (m requestHandler) statusRequest() bool {
 func (m requestHandler) registerRequest(register register) bool {
 	payload, _ := json.Marshal(register)
 	reader := bytes.NewReader(payload)
-	requestURL := fmt.Sprintf("%s/register", baseurl)
+	requestURL := fmt.Sprintf("%s/register", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -157,7 +153,7 @@ func (m requestHandler) registerRequest(register register) bool {
 }
 
 func (m requestHandler) lobbyRequest() []list.Item {
-	requestURL := fmt.Sprintf("%s/lobby", baseurl)
+	requestURL := fmt.Sprintf("%s/lobby", env.Server)
 	items := []list.Item{}
 
 	client := &http.Client{
@@ -197,7 +193,7 @@ func (m requestHandler) lobbyRequest() []list.Item {
 func (m requestHandler) makeGameRequest(gc gameConfig) newGame {
 	payload, _ := json.Marshal(gc)
 	reader := bytes.NewReader(payload)
-	requestURL := fmt.Sprintf("%s/makegame", baseurl)
+	requestURL := fmt.Sprintf("%s/makegame", env.Server)
 	game := newGame{}
 
 	client := &http.Client{Jar: m.jar}
@@ -228,7 +224,7 @@ func (m requestHandler) makeGameRequest(gc gameConfig) newGame {
 }
 
 func (m requestHandler) waitingRoomRequest() waitingRoom {
-	requestURL := fmt.Sprintf("%s/waitingroom", baseurl)
+	requestURL := fmt.Sprintf("%s/waitingroom", env.Server)
 	items := []list.Item{}
 
 	client := &http.Client{
@@ -273,7 +269,7 @@ func (m requestHandler) waitingRoomRequest() waitingRoom {
 
 func (m requestHandler) leaveGameRequest() bool {
 	reader := bytes.NewBufferString("")
-	requestURL := fmt.Sprintf("%s/leavegame", baseurl)
+	requestURL := fmt.Sprintf("%s/leavegame", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -297,7 +293,7 @@ func (m requestHandler) leaveGameRequest() bool {
 
 func (m requestHandler) readyRequest() bool {
 	reader := bytes.NewBufferString("")
-	requestURL := fmt.Sprintf("%s/ready", baseurl)
+	requestURL := fmt.Sprintf("%s/ready", env.Server)
 
 	client := &http.Client{Jar: m.jar}
 
@@ -319,7 +315,7 @@ func (m requestHandler) readyRequest() bool {
 
 func (m requestHandler) startGameRequest() bool {
 	reader := bytes.NewBufferString("")
-	requestURL := fmt.Sprintf("%s/startgame", baseurl)
+	requestURL := fmt.Sprintf("%s/startgame", env.Server)
 
 	client := &http.Client{Jar: m.jar}
 
@@ -342,7 +338,7 @@ func (m requestHandler) startGameRequest() bool {
 func (m requestHandler) joinGameRequest(gameId gameId) bool {
 	payload, _ := json.Marshal(gameId)
 	reader := bytes.NewReader(payload)
-	requestURL := fmt.Sprintf("%s/joingame", baseurl)
+	requestURL := fmt.Sprintf("%s/joingame", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -365,7 +361,7 @@ func (m requestHandler) joinGameRequest(gameId gameId) bool {
 }
 
 func (m requestHandler) handRequest() []card {
-	requestURL := fmt.Sprintf("%s/hand", baseurl)
+	requestURL := fmt.Sprintf("%s/hand", env.Server)
 	var hand []card
 
 	client := &http.Client{
@@ -411,7 +407,7 @@ func handFromStrings(handStrings []string) []card {
 func (m requestHandler) playCardRequest(index handIndex) bool {
 	payload, _ := json.Marshal(index)
 	reader := bytes.NewReader(payload)
-	requestURL := fmt.Sprintf("%s/playcard", baseurl)
+	requestURL := fmt.Sprintf("%s/playcard", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -435,7 +431,7 @@ func (m requestHandler) playCardRequest(index handIndex) bool {
 
 func (m requestHandler) actionsRequest() []action {
 	var actions []action
-	requestURL := fmt.Sprintf("%s/actions", baseurl)
+	requestURL := fmt.Sprintf("%s/actions", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -468,7 +464,7 @@ func (m requestHandler) actionsRequest() []action {
 
 func (m requestHandler) mySeatRequest() mySeat {
 	var seat mySeat
-	requestURL := fmt.Sprintf("%s/seat", baseurl)
+	requestURL := fmt.Sprintf("%s/seat", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -504,7 +500,7 @@ func (m requestHandler) changeTeamRequest(spectator bool) bool {
 		reader = bytes.NewReader([]byte("{team:S}")) // Not worth implementing the JSON.
 	}
 
-	requestURL := fmt.Sprintf("%s/changeteam", baseurl)
+	requestURL := fmt.Sprintf("%s/changeteam", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -529,7 +525,7 @@ func (m requestHandler) changeTeamRequest(spectator bool) bool {
 func (m requestHandler) swapBottomCardRequest() bool {
 	reader := bytes.NewReader([]byte{})
 
-	requestURL := fmt.Sprintf("%s/swapBottomCard", baseurl)
+	requestURL := fmt.Sprintf("%s/swapBottomCard", env.Server)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -552,7 +548,7 @@ func (m requestHandler) swapBottomCardRequest() bool {
 }
 
 func (m requestHandler) replayRequest(gameId gameId) []action {
-	requestURL := fmt.Sprintf("%s/replay?gameId=%s", baseurl, gameId.GameId)
+	requestURL := fmt.Sprintf("%s/replay?gameId=%s", env.Server, gameId.GameId)
 
 	client := &http.Client{
 		Jar: m.jar,
