@@ -28,16 +28,20 @@ var (
 		"Enddy": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCa4MMeQKYeAyEekyGOA0WlD/vFvlxQXu/yZV81wMWEKeplLTvMQGjfpsgA51BvmLAAzFhBnPloAFS6+dUvKlYJ27HbdI/6hLAxUPH19OwYD9Aks0utGIXqPRwPl+TVCM+4OZkvsd18rKueWJ/SYBeVudNzXECx9UmB2n33Rz4OLC+tKLuoYVgAd3LGIHsRS29o67OpPwHdW8zosCfQ6ZLD4oAinHqSIZCqfXXtrfee1F5hQNTxPTU47zyVNUshm9JaqrYQyFn5AWKjolcqOr3zt176rULsphZYcha9XpZ6u2M0YeJEkLUIrKAVoY3aTG0ZqBKMryLA4G89L+AQCcX1lxvMnU1SOotQ57C/CDC+iiqWF1VguU/23H80LVANYEenJYqgPhN3A42d7HchcaW8VTAwjLrrBSPT9F336oi+jQNGTPWfNndp9i0dlbPZbSRW89hOX+N5EHodWZPf09Wb5pvNm2Hyd2GCIoIhmF+kMyJnP3X6LX9ebn5jKK9mxiqsdjvZKlQLlhaLGHZmMJKyqWzOPKcBFPzU+h9/pUrqcmNQCP8djM8Al7z/JLeUqP9TIXv7W/yyVvMcAA/TgR/GvcXwV+JQFqi4x2EwaD+VMQeSBvGu01f0CVPZFepmDLBpSztzr0adk6f49aCNwXY+52s/Z3VxTjNblStqLFYAFw== enddyygf93@live.com",
 	}
 	allowedKeyTypes = "ssh-rsa, "
+	env             Environment
+	keyPath         = ".ssh/id_ed25519"
 )
 
 type Environment struct {
-	Host  string `default:"localhost"`
-	Port  string `default:"23234"`
-	Debug bool   `default:"false"`
+	Host   string `default:"localhost"`
+	Server string `default:"localhost"`
+	Port   string `default:"23234"`
+	Log    string `default:"brisca.log"`
+	Debug  bool   `default:"false"`
+	Key    string `default:""`
 }
 
 func main() {
-	var env Environment
 	os.Setenv("GLAMOUR_STYLE", "dracula")
 	err := envconfig.Process("brisca", &env)
 	if err != nil {
@@ -47,7 +51,7 @@ func main() {
 
 	s, err := wish.NewServer(
 		wish.WithAddress(net.JoinHostPort(env.Host, env.Port)),
-		wish.WithHostKeyPath(".ssh/id_ed25519"),
+		wish.WithHostKeyPath(keyPath),
 		wish.WithPublicKeyAuth(keyHandler),           // This should be optional but isn't.
 		wish.WithKeyboardInteractiveAuth(skipThis()), // If this isn't added the PubKeyAuth will require a key.
 		// This makes make PubKey Auth optional
@@ -117,8 +121,6 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	return m, []tea.ProgramOption{tea.WithAltScreen()}
 }
 
-type keyMiddleware wish.Middleware
-
 func keyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	if !strings.Contains(allowedKeyTypes, key.Type()) {
 		allowedKeyTypes += key.Type() + ", "
@@ -157,7 +159,6 @@ func AuthMiddleware() wish.Middleware {
 			}
 
 			next(sess)
-			return
 		}
 	}
 }

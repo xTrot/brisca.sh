@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -e
+
+echo "Trying to cache the root image."
+echo "====================================================================="
+docker pull alpine:latest \
+    && echo "Root image cahed successfully." \
+    || echo "Could not cache root image, continuing with what I have."
+echo "====================================================================="
+
+echo ""
+echo "Compiling"
+echo "====================================================================="
+CGO_ENABLED=0 GOOS=linux go build && echo "Compiled success."
+echo "====================================================================="
+
+echo ""
+echo "Building docker image"
+echo "====================================================================="
+docker build -t brisca.sh .
+echo "====================================================================="
