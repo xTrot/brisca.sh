@@ -34,7 +34,7 @@ var (
 
 type Environment struct {
 	Host   string `default:"localhost"`
-	Server string `default:"localhost"`
+	Server string `default:"http://localhost:8000"`
 	Port   string `default:"23234"`
 	Log    string `default:"brisca.log"`
 	Debug  bool   `default:"false"`

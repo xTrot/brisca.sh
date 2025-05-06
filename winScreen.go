@@ -63,13 +63,23 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.renderEmoji)
 		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.renderEmoji)
 		scSize = 2
-		winString = players[gameWon.Seat].name + " won!!!"
+		switch gameWon.Seat {
+		case -1:
+			winString = "It was a tie!"
+		default:
+			winString = players[gameWon.Seat].name + " won!!!"
+		}
 	case 3:
 		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.renderEmoji)
 		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.renderEmoji)
 		thirdScoreCounter = newScoreCounter(2, players[2].name, players[2].scorePile, userGlobal.renderEmoji)
 		scSize = 3
-		winString = players[gameWon.Seat].name + " won!!!"
+		switch gameWon.Seat {
+		case -1:
+			winString = "It was a tie!"
+		default:
+			winString = players[gameWon.Seat].name + " won!!!"
+		}
 	case 4:
 		teamAString := fmt.Sprintf("Team A:\n %s and %s", players[0].name, players[2].name)
 		teamBString := fmt.Sprintf("Team B:\n %s and %s", players[1].name, players[3].name)
@@ -81,6 +91,8 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 			winString = teamAString + " won!!!"
 		case "B":
 			winString = teamBString + " won!!!"
+		case "draw":
+			winString = "It was a tie!"
 		}
 	default:
 		panic(fmt.Sprintf("gameConfig.MaxPlayers not 2-4, gameConfig=%v", gc))
