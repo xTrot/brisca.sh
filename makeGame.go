@@ -85,7 +85,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
 		defer cancel()
 
-		game := m.userGlobal.rh.makeGameRequest(gc)
+		game := m.userGlobal.rh.makeGameRequest(gc, m.userGlobal.username)
 
 		err := spinner.New().
 			Type(spinner.Line).
@@ -95,6 +95,10 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		if game.GameId == (newGame{}).GameId {
+			return m.nextView, m.nextView.Init()
 		}
 
 		wrm := newWaitingRoom(m.userGlobal)

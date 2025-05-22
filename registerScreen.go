@@ -75,7 +75,7 @@ func newModel(session *ssh.Session) registerModel {
 		rh:          newRequestHandler(),
 		renderEmoji: true,
 	}
-	m.isUp = m.userGlobal.rh.statusRequest()
+	m.isUp = m.userGlobal.rh.statusRequest(BROWSER)
 
 	m.upStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("10"))
 	m.downStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("9"))
@@ -117,7 +117,7 @@ func (m registerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.help.keys.Enter):
 			var register register
 			register.Username = m.textInput.Value()
-			if m.userGlobal.rh.registerRequest(register) {
+			if m.userGlobal.rh.registerRequest(register, env.BrowserServer, BROWSER) {
 				m.userGlobal.username = register.Username
 				lm := newLobby(m.userGlobal)
 				return lm, tea.Batch(lm.Init())

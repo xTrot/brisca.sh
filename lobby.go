@@ -263,10 +263,10 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 	return lm, nil
 }
 
-func (m *lobbyModel) joinGame(title string) tea.Cmd {
+func (m *lobbyModel) joinGame(game game) tea.Cmd {
 	return func() tea.Msg {
-		gameId := gameId{GameId: title}
-		if m.userGlobal.rh.joinGameRequest(gameId) {
+		gameId := gameId{GameId: game.GameId}
+		if m.userGlobal.rh.joinGameRequest(gameId, game.Server) {
 			return joinGameMsg{
 				gameId: gameId,
 			}
