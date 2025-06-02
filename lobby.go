@@ -150,7 +150,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case joinGameMsg:
-		wrm := newWaitingRoom(m.userGlobal)
+		wrm := newWaitingRoom(msg.userGlobal)
 		wrm.list.Title = "GameID: " + msg.gameId.GameId
 		cmd = wrm.Init()
 		return wrm, cmd
@@ -263,12 +263,18 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 	return lm, nil
 }
 
+type joinGameMsg struct {
+	gameId     gameId
+	userGlobal userGlobal
+}
+
 func (m *lobbyModel) joinGame(game game) tea.Cmd {
 	return func() tea.Msg {
 		gameId := gameId{GameId: game.GameId}
-		if m.userGlobal.rh.joinGameRequest(gameId, game.Server) {
+		if m.userGlobal.rh.joinGameRequest(gameId, game.Server, m.userGlobal.username) {
 			return joinGameMsg{
-				gameId: gameId,
+				gameId:     gameId,
+				userGlobal: m.userGlobal,
 			}
 		} else {
 			return nil

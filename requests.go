@@ -175,6 +175,9 @@ func (m requestHandler) registerRequest(register register, server string, stype 
 		Jar: jar,
 	}
 
+	tryString := fmt.Sprintf("%s, %s, %d", requestURL, register.Username, stype)
+	log.Debug("Register, trying: ", "tryString", tryString)
+
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
 		log.Error("error making http request: %s\n", err)
@@ -416,10 +419,22 @@ func (m requestHandler) startGameRequest() bool {
 	return true
 }
 
-func (m requestHandler) joinGameRequest(gameId gameId, server string) bool {
+func (m *requestHandler) joinGameRequest(gameId gameId, server, username string) bool {
 	payload, _ := json.Marshal(gameId)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("http://%s/joingame", server)
+
+	tmpGameServer := "http://" + server
+
+	reg := register{
+		Username: username,
+	}
+
+	success := m.registerRequest(reg, tmpGameServer, GAME)
+	if !success {
+		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
+		return false
+	}
 
 	client := &http.Client{
 		Jar: m.GameJar,
@@ -427,16 +442,18 @@ func (m requestHandler) joinGameRequest(gameId gameId, server string) bool {
 
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
 		return false
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
+		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
 		return false
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	m.GameServer = tmpGameServer
 
 	return true
 }

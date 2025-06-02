@@ -49,7 +49,3 @@ func newDelegateKeyMap() *delegateKeyMap {
 		),
 	}
 }
-
-type joinGameMsg struct {
-	gameId gameId
-}
