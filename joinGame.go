@@ -91,7 +91,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		joined := m.userGlobal.rh.joinPrivateGameRequest(gameId)
+		joined := m.userGlobal.rh.joinPrivateGameRequest(gameId, m.userGlobal.username)
 
 		if joined {
 			wrm := newWaitingRoom(m.userGlobal)

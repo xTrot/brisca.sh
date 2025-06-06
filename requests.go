@@ -27,11 +27,6 @@ type requestHandler struct {
 	GameServer string
 }
 
-func (m requestHandler) joinPrivateGameRequest(gameId gameId) bool {
-	// TODO: Implement this.
-	return false
-}
-
 func newRequestHandler() requestHandler {
 	jar, _ := cookiejar.New(nil)
 	gjar, _ := cookiejar.New(nil)
@@ -441,6 +436,75 @@ func (m *requestHandler) joinGameRequest(gameId gameId, server, username string)
 	}
 
 	res, err := client.Post(requestURL, "raw", reader)
+	if err != nil {
+		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	m.GameServer = tmpGameServer
+
+	return true
+}
+
+func (m *requestHandler) joinPrivateGameRequest(gameId gameId, username string) bool {
+	requestURL := fmt.Sprintf("%s/joinprivategame?gameId=%s", env.BrowserServer, gameId.GameId)
+
+	client := &http.Client{
+		Jar: m.BrowserJar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
+		return false
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
+		return false
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	var game game
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error("error making http request: ", "err", err)
+		return false
+	}
+
+	json.Unmarshal([]byte(body.String()), &game)
+
+	tmpGameServer := "http://" + game.Server
+
+	reg := register{
+		Username: username,
+	}
+
+	success := m.registerRequest(reg, tmpGameServer, GAME)
+	if !success {
+		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
+		return false
+	}
+
+	payload, _ := json.Marshal(game)
+	reader := bytes.NewReader(payload)
+	requestURL = fmt.Sprintf("%s/joingame", tmpGameServer)
+
+	client = &http.Client{
+		Jar: m.GameJar,
+	}
+
+	res, err = client.Post(requestURL, "raw", reader)
 	if err != nil {
 		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
 		return false
