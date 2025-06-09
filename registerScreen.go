@@ -117,7 +117,7 @@ func (m registerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.help.keys.Enter):
 			var register register
 			register.Username = m.textInput.Value()
-			if m.userGlobal.rh.registerRequest(register, env.BrowserServer, BROWSER) {
+			if m.userGlobal.rh.registerRequest(register, env.BrowserServer) {
 				m.userGlobal.username = register.Username
 				lm := newLobby(m.userGlobal)
 				return lm, tea.Batch(lm.Init())
