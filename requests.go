@@ -218,7 +218,7 @@ func (m requestHandler) lobbyRequest() []list.Item {
 	return items
 }
 
-func (m *requestHandler) makeGameRequest(gc gameConfig, username string) newGame {
+func (m *requestHandler) makeGameRequest(gc gameConfig) newGame {
 	payload, _ := json.Marshal(gc)
 	reader := bytes.NewReader(payload)
 	game := newGame{}
@@ -251,16 +251,6 @@ func (m *requestHandler) makeGameRequest(gc gameConfig, username string) newGame
 	json.Unmarshal([]byte(body.String()), &lease)
 
 	tmpGameServer := "http://" + lease.Host + ":" + lease.Port
-
-	reg := register{
-		Username: username,
-	}
-
-	success := m.registerRequest(reg, tmpGameServer)
-	if !success {
-		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
-		return game
-	}
 
 	requestURL = fmt.Sprintf("%s/config", tmpGameServer)
 

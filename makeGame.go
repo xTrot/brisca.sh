@@ -85,7 +85,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
 		defer cancel()
 
-		game := m.userGlobal.rh.makeGameRequest(gc, m.userGlobal.username)
+		game := m.userGlobal.rh.makeGameRequest(gc)
 
 		err := spinner.New().
 			Type(spinner.Line).
