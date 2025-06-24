@@ -23,8 +23,8 @@ const (
 // 	CARD_PLAYED,
 // 	TURN_WON,
 // 	GAME_WON,
-//  SEAT_AFK,
-//  SEAT_NOT_AFK,
+// 	SEAT_AFK,
+// 	SEAT_NOT_AFK,
 // }
 
 type gameConfigPayload struct {
