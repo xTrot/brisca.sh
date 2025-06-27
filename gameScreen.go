@@ -374,7 +374,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *gsModel) refreshSessionCheck() tea.Cmd {
 	return func() tea.Msg {
-		return m.userGlobal.rh.refreshSessionCheck(10 * time.Minute)
+		return m.userGlobal.rh.refreshSessionCheck(14 * time.Minute)
 	}
 }
 

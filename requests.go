@@ -34,9 +34,14 @@ func (m *requestHandler) refreshSessionCheck(before time.Duration) tea.Msg {
 	now := time.Now().UTC()
 	expires := m.refreshBy.UTC()
 	timeBefore := expires.Add(-before)
-	log.Debug("Time: ", "now", now, "expires", expires, "minuteBefore", timeBefore)
 	if !(now.After(timeBefore) && now.Before(expires)) {
 		return rtn
+	}
+
+	if log.GetLevel() == log.DebugLevel {
+		log.Debug("Time: ", "timeBefore", timeBefore)
+		log.Debug("Time: ", "now       ", now)
+		log.Debug("Time: ", "expires   ", expires)
 	}
 
 	rtn = m.refreshSessionRequest()
