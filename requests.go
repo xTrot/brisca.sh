@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
 )
 
@@ -24,6 +25,23 @@ const (
 type requestHandler struct {
 	jar        *cookiejar.Jar
 	GameServer string
+	refreshBy  time.Time
+}
+
+func (m *requestHandler) refreshSessionCheck(before time.Duration) tea.Msg {
+	var rtn tea.Msg
+
+	now := time.Now().UTC()
+	expires := m.refreshBy.UTC()
+	timeBefore := expires.Add(-before)
+	log.Debug("Time: ", "now", now, "expires", expires, "minuteBefore", timeBefore)
+	if !(now.After(timeBefore) && now.Before(expires)) {
+		return rtn
+	}
+
+	rtn = m.refreshSessionRequest()
+
+	return rtn
 }
 
 func newRequestHandler() requestHandler {
@@ -152,7 +170,7 @@ func (m requestHandler) statusRequest(stype ServerType) bool {
 }
 
 // {"username" : "Guest"}
-func (m requestHandler) registerRequest(register register, server string) bool {
+func (m *requestHandler) registerRequest(register register, server string) bool {
 	payload, _ := json.Marshal(register)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/register", server)
@@ -173,6 +191,16 @@ func (m requestHandler) registerRequest(register register, server string) bool {
 	if res.StatusCode != http.StatusOK {
 		log.Error("bad status making http request: %d\n", res.StatusCode)
 		return false
+	}
+
+	cookies := res.Cookies()
+	for i := range cookies {
+		cookie := cookies[i]
+		if cookie.Name != "userId" {
+			continue
+		}
+		m.refreshBy = cookie.Expires
+		log.Debug("Cookies from body: ", "cookie", cookie, "m.refreshBy", m.refreshBy)
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
@@ -250,6 +278,12 @@ func (m *requestHandler) makeGameRequest(gc gameConfig) newGame {
 
 	json.Unmarshal([]byte(body.String()), &lease)
 
+	exp, err := time.Parse(time.RFC3339, lease.ExpirationStr)
+	if err != nil {
+		log.Error("Error parsing time by RFC3339 failed.", "lease.ExpirationStr", lease.ExpirationStr, "err", err)
+	}
+	lease.expiration = exp
+
 	tmpGameServer := "http://" + lease.Host + ":" + lease.Port
 
 	requestURL = fmt.Sprintf("%s/config", tmpGameServer)
@@ -279,6 +313,8 @@ func (m *requestHandler) makeGameRequest(gc gameConfig) newGame {
 	json.Unmarshal([]byte(body.String()), &game)
 
 	m.GameServer = tmpGameServer
+
+	log.Debug("Configured Server: ", "GameServer", m.GameServer, "now", time.Now(), "leaseExpires:", lease.expiration)
 
 	return game
 }
@@ -721,4 +757,37 @@ func (m requestHandler) replayRequest(gameId gameId) []action {
 	json.Unmarshal([]byte(body.String()), &actions)
 
 	return actions
+}
+
+func (m *requestHandler) refreshSessionRequest() tea.Msg {
+	requestURL := fmt.Sprintf("%s/refresh", env.BrowserServer)
+
+	client := &http.Client{
+		Jar: m.jar,
+	}
+
+	res, err := client.Get(requestURL)
+	if err != nil {
+		log.Error("error making http request: ", err)
+		return nil
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("bad status making http request: ", res.StatusCode)
+		return nil
+	}
+
+	cookies := res.Cookies()
+	for i := range cookies {
+		cookie := cookies[i]
+		if cookie.Name != "userId" {
+			continue
+		}
+		m.refreshBy = cookie.Expires
+		log.Debug("Cookies from body: ", "cookie", cookie, "m.refreshBy", m.refreshBy)
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	return nil
 }

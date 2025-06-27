@@ -147,6 +147,8 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
 
 	case tea.KeyMsg:
+		cmd = m.refreshSessionCheck()
+		cmds = append(cmds, cmd)
 
 		switch {
 		case key.Matches(msg, m.keys.quit):
@@ -180,6 +182,12 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m waitingRoomModel) refreshSessionCheck() tea.Cmd {
+	return func() tea.Msg {
+		return m.userGlobal.rh.refreshSessionCheck(10 * time.Minute)
+	}
 }
 
 func (m waitingRoomModel) View() string {

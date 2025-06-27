@@ -226,6 +226,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.ProcessAction()
 		cmds = append(cmds, cmd)
 	case tea.KeyMsg:
+		cmd = m.refreshSessionCheck()
+		cmds = append(cmds, cmd)
 		switch {
 		case key.Matches(msg, m.help.keys.Quit):
 			m.userGlobal.rh.leaveGameRequest()
@@ -238,30 +240,23 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			handSize := len(m.hand)
 			rawMove := m.selectedCard - 1
 			m.selectedCard = (rawMove%handSize + handSize) % handSize
-			return m, nil
 		case key.Matches(msg, m.help.keys.Right):
 			m.selectedCard = (m.selectedCard + 1) % len(m.hand)
-			return m, nil
 		case key.Matches(msg, m.help.keys.Enter):
 			cmd = m.playCard(m.selectedCard)
 			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.help.keys.One):
 			cmd = m.playCard(0)
 			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.help.keys.Two):
 			cmd = m.playCard(1)
 			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.help.keys.Three):
 			cmd = m.playCard(2)
 			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.help.keys.Swap):
 			cmd = m.swapBottomCard()
 			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
 		case key.Matches(msg, m.help.keys.Cheat):
 			m.showCheat = !m.showCheat
 
@@ -290,9 +285,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.gameConfig = msg
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-		if m.gameConfig.MaxPlayers == 3 {
+		switch m.gameConfig.MaxPlayers {
+		case 3:
 			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 3rd player box
-		} else if m.gameConfig.MaxPlayers == 4 {
+		case 4:
 			m.boxes[1][0].style = m.boxes[1][0].style.BorderStyle(lipgloss.NormalBorder()) // Adding 2nd player box
 			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 4th player box
 		}
@@ -376,6 +372,12 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *gsModel) refreshSessionCheck() tea.Cmd {
+	return func() tea.Msg {
+		return m.userGlobal.rh.refreshSessionCheck(10 * time.Minute)
+	}
+}
+
 type seatsMsg []playerModel
 
 func (m gsModel) processSeats(seats []seat) tea.Cmd {
@@ -386,13 +388,14 @@ func (m gsModel) processSeats(seats []seat) tea.Cmd {
 			// This part only works because case mySeat: happens first then seatsMsg
 			adjustedSeat := (i - m.statusBar.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
 			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.statusBar.turn, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
-			if m.gameConfig.MaxPlayers == 2 {
+			switch m.gameConfig.MaxPlayers {
+			case 2:
 				player.boxX = SEAT_BASED_BOXES_2P[adjustedSeat][0]
 				player.boxY = SEAT_BASED_BOXES_2P[adjustedSeat][1]
-			} else if m.gameConfig.MaxPlayers == 3 {
+			case 3:
 				player.boxX = SEAT_BASED_BOXES_3P[adjustedSeat][0]
 				player.boxY = SEAT_BASED_BOXES_3P[adjustedSeat][1]
-			} else if m.gameConfig.MaxPlayers == 4 {
+			case 4:
 				player.boxX = SEAT_BASED_BOXES_4P[adjustedSeat][0]
 				player.boxY = SEAT_BASED_BOXES_4P[adjustedSeat][1]
 			}

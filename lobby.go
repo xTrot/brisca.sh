@@ -178,6 +178,8 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case tea.KeyMsg:
+		cmd = m.refreshSessionCheck()
+		cmds = append(cmds, cmd)
 		// Don't match any of the keys below if we're actively filtering.
 		if m.list.FilterState() == list.Filtering {
 			break
@@ -231,6 +233,12 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (lm lobbyModel) refreshSessionCheck() tea.Cmd {
+	return func() tea.Msg {
+		return lm.userGlobal.rh.refreshSessionCheck(5 * time.Minute)
+	}
 }
 
 func (lm lobbyModel) View() string {
