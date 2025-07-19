@@ -225,6 +225,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmd = m.ProcessAction()
 		cmds = append(cmds, cmd)
+	case refreshByMsg:
+		m.userGlobal.rh.refreshBy = time.Time(msg)
 	case tea.KeyMsg:
 		cmd = m.refreshSessionCheck()
 		cmds = append(cmds, cmd)

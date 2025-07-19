@@ -28,6 +28,8 @@ type requestHandler struct {
 	refreshBy  time.Time
 }
 
+type refreshByMsg time.Time
+
 func (m *requestHandler) refreshSessionCheck(before time.Duration) tea.Msg {
 	var rtn tea.Msg
 
@@ -765,6 +767,7 @@ func (m requestHandler) replayRequest(gameId gameId) []action {
 }
 
 func (m *requestHandler) refreshSessionRequest() tea.Msg {
+	var msg refreshByMsg
 	requestURL := fmt.Sprintf("%s/refresh", env.BrowserServer)
 
 	client := &http.Client{
@@ -788,11 +791,11 @@ func (m *requestHandler) refreshSessionRequest() tea.Msg {
 		if cookie.Name != "userId" {
 			continue
 		}
-		m.refreshBy = cookie.Expires
-		log.Debug("Cookies from body: ", "cookie", cookie, "m.refreshBy", m.refreshBy)
+		msg = refreshByMsg(cookie.Expires)
+		log.Debug("Cookies from body: ", "cookie", cookie)
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
-	return nil
+	return msg
 }
