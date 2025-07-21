@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"brisca.sh/embedded"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
@@ -54,7 +55,7 @@ func newMakeGame(nv tea.Model, userGlobal userGlobal) makeGameModel {
 		),
 		nextView:   nv,
 		userGlobal: userGlobal,
-		helpMd:     NewMarkdownModel(MakeGameHelp, true, ""),
+		helpMd:     NewMarkdownModel(embedded.MakeGameHelp, true, ""),
 	}
 }
 

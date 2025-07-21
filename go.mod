@@ -1,4 +1,4 @@
-module brisca.sh/m/v2
+module brisca.sh
 
 go 1.23.5
 

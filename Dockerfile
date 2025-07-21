@@ -1,6 +1,6 @@
 FROM alpine:latest
 WORKDIR /app
-ADD m /app/ssh-ui
+ADD brisca.sh /app/
 EXPOSE 22
 
 # Configurable env variables
@@ -23,4 +23,4 @@ EXPOSE 22
 #     distrust this change.
 # =============================================================================
 
-CMD ["/app/ssh-ui"]
+CMD ["/app/brisca.sh"]

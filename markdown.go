@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"brisca.sh/embedded"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -46,7 +47,7 @@ func NewCheatSheetModel() MarkdownModel {
 	)
 
 	return MarkdownModel{
-		Text:     CheatSheet,
+		Text:     embedded.CheatSheet,
 		Style:    style,
 		static:   true,
 		renderer: *renderer,
@@ -54,7 +55,7 @@ func NewCheatSheetModel() MarkdownModel {
 }
 
 func NewFullHelpModel() MarkdownModel {
-	return NewMarkdownModel(FullHelp, false, "How to Play brisca.sh")
+	return NewMarkdownModel(embedded.FullHelp, false, "How to Play brisca.sh")
 }
 
 // title argument is only for viewport

@@ -3,11 +3,13 @@ package main
 import (
 	"time"
 
+	quitscreen "brisca.sh/quitScreen"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 )
 
 const (
@@ -146,6 +148,11 @@ func (lm lobbyModel) Init() tea.Cmd {
 func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
+
+	if time.Now().After(m.userGlobal.rh.refreshBy) {
+		log.Debug("Idle Disconnect")
+		return quitscreen.NewModel("Idle Disconnect")
+	}
 
 	switch msg := msg.(type) {
 
