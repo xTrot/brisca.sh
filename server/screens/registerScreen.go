@@ -1,10 +1,11 @@
-package main
+package screens
 
 import (
 	"strings"
 	"time"
 	"unicode"
 
+	"brisca.sh/server/requests"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,12 +32,13 @@ const (
 	textInputView sessionState = iota
 )
 
-type registerModel struct {
+type RegisterModel struct {
 	state      sessionState
 	textInput  textinput.Model
-	help       helpModel
+	help       HelpModel
 	isUp       bool
-	userGlobal userGlobal
+	userGlobal UserGlobal
+	browser    string
 
 	upStyle       lipgloss.Style
 	downStyle     lipgloss.Style
@@ -44,47 +46,35 @@ type registerModel struct {
 	registerStyle lipgloss.Style
 }
 
-type userGlobal struct {
-	session     ssh.Session
-	renderer    *lipgloss.Renderer
-	sizeMsg     tea.WindowSizeMsg
-	username    string
-	rh          requestHandler
-	renderEmoji bool
-}
+func NewRegisterScreen(session *ssh.Session, browser string) RegisterModel {
 
-func (m userGlobal) LastWindowSizeReplay() tea.Cmd {
-	return func() tea.Msg {
-		return m.sizeMsg
+	m := RegisterModel{
+		state:   textInputView,
+		browser: browser,
 	}
-}
-
-func newModel(session *ssh.Session) registerModel {
-
-	m := registerModel{state: textInputView}
 	m.textInput = textinput.New()
 	m.textInput.Placeholder = "Guest"
 	m.textInput.Focus()
 	m.textInput.CharLimit = 25
 	m.textInput.Width = 20
 	m.textInput.Prompt = "\tWhat's your username?\n\t\t> "
-	m.help = newHelp()
-	m.userGlobal = userGlobal{
-		session:     *session,
-		renderer:    bubbletea.MakeRenderer(*session),
-		rh:          newRequestHandler(),
-		renderEmoji: true,
+	m.help = NewHelp()
+	m.userGlobal = UserGlobal{
+		Session:     *session,
+		Renderer:    bubbletea.MakeRenderer(*session),
+		ReqHandler:  requests.NewHandler(),
+		RenderEmoji: true,
 	}
-	m.isUp = m.userGlobal.rh.statusRequest(BROWSER)
+	m.isUp = m.userGlobal.ReqHandler.StatusRequest(requests.BROWSER)
 
-	m.upStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("10"))
-	m.downStyle = m.userGlobal.renderer.NewStyle().Foreground(lipgloss.Color("9"))
-	m.helpStyle = m.userGlobal.renderer.NewStyle().
+	m.upStyle = m.userGlobal.Renderer.NewStyle().Foreground(lipgloss.Color("10"))
+	m.downStyle = m.userGlobal.Renderer.NewStyle().Foreground(lipgloss.Color("9"))
+	m.helpStyle = m.userGlobal.Renderer.NewStyle().
 		Foreground(lipgloss.Color("241")).
 		Width(75).Height(5).
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.HiddenBorder())
-	m.registerStyle = m.userGlobal.renderer.NewStyle().
+	m.registerStyle = m.userGlobal.Renderer.NewStyle().
 		Width(75).Height(15).
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.NormalBorder()).
@@ -93,33 +83,33 @@ func newModel(session *ssh.Session) registerModel {
 	return m
 }
 
-func (m registerModel) Init() tea.Cmd {
+func (m RegisterModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
 	return tea.Batch(textinput.Blink, m.help.Init(),
 		tea.SetWindowTitle("brisca.sh"))
 }
 
-func (m registerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m RegisterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = msg
+		m.userGlobal.SizeMsg = msg
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.help.keys.Quit):
+		case key.Matches(msg, m.help.Keys.Quit):
 			return m, tea.Quit
-		case key.Matches(msg, m.help.keys.Help):
+		case key.Matches(msg, m.help.Keys.Help):
 			m.help, _ = m.help.Update(msg)
 			return m, nil
-		case key.Matches(msg, m.help.keys.Enter):
-			var register register
+		case key.Matches(msg, m.help.Keys.Enter):
+			var register requests.Register
 			register.Username = m.textInput.Value()
-			if m.userGlobal.rh.registerRequest(register, env.BrowserServer) {
-				m.userGlobal.username = register.Username
-				lm := newLobby(m.userGlobal)
+			if m.userGlobal.ReqHandler.RegisterRequest(register, m.browser) {
+				m.userGlobal.Username = register.Username
+				lm := NewLobby(m.userGlobal)
 				return lm, tea.Batch(lm.Init())
 			}
 		}
@@ -146,16 +136,16 @@ func okChars(r rune) bool {
 	return false
 }
 
-func (m registerModel) View() string {
-	switch {
-	case m.state == textInputView:
+func (m RegisterModel) View() string {
+	switch m.state {
+	case textInputView:
 		return registerView(m)
 	}
 
 	return ""
 }
 
-func registerView(m registerModel) string {
+func registerView(m RegisterModel) string {
 	var s string
 	inside := "\t\t\t\t\t\t\tWelcome to brisca.sh!\n\n\n\n"
 	inside += "Brisca Server: "

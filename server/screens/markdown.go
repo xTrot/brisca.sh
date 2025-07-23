@@ -1,11 +1,11 @@
-package main
+package screens
 
 import (
 	"fmt"
 	"log"
 	"strings"
 
-	"brisca.sh/embedded"
+	"brisca.sh/server/embedded"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"

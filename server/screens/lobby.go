@@ -1,9 +1,9 @@
-package main
+package screens
 
 import (
 	"time"
 
-	quitscreen "brisca.sh/quitScreen"
+	"brisca.sh/server/requests"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -73,7 +73,7 @@ type lobbyModel struct {
 	keys         *listKeyMap
 	delegateKeys *delegateKeyMap
 	lastUpdate   time.Time
-	userGlobal   userGlobal
+	userGlobal   UserGlobal
 	fullHelp     MarkdownModel
 	showFH       bool
 }
@@ -82,7 +82,7 @@ type itemsMsg struct {
 	items []list.Item
 }
 
-func newLobby(userGlobal userGlobal) lobbyModel {
+func NewLobby(userGlobal UserGlobal) lobbyModel {
 	var (
 		delegateKeys = newDelegateKeyMap()
 		listKeys     = newListKeyMap()
@@ -149,9 +149,9 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
-	if time.Now().After(m.userGlobal.rh.refreshBy) {
+	if time.Now().After(m.userGlobal.ReqHandler.RefreshBy) {
 		log.Debug("Idle Disconnect")
-		return quitscreen.NewModel("Idle Disconnect")
+		return NewModel("Idle Disconnect")
 	}
 
 	switch msg := msg.(type) {
@@ -174,7 +174,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = msg
+		m.userGlobal.SizeMsg = msg
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		var model tea.Model
@@ -222,13 +222,13 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			rg := newReplayGame(m, m.userGlobal)
 			return rg, rg.Init()
 		case key.Matches(msg, m.keys.emoji):
-			if m.userGlobal.renderEmoji {
+			if m.userGlobal.RenderEmoji {
 				m.list.StatusMessageLifetime = time.Second * 2
-				m.userGlobal.renderEmoji = false
+				m.userGlobal.RenderEmoji = false
 				cmds = append(cmds, m.list.NewStatusMessage("Emoji rendering disabled."))
 			} else {
 				m.list.StatusMessageLifetime = time.Second * 2
-				m.userGlobal.renderEmoji = true
+				m.userGlobal.RenderEmoji = true
 				cmds = append(cmds, m.list.NewStatusMessage("Emoji rendering enabled."))
 			}
 		}
@@ -244,7 +244,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (lm lobbyModel) refreshSessionCheck() tea.Cmd {
 	return func() tea.Msg {
-		return lm.userGlobal.rh.refreshSessionCheck(5 * time.Minute)
+		return lm.userGlobal.ReqHandler.RefreshSessionCheck(5 * time.Minute)
 	}
 }
 
@@ -268,7 +268,7 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 
 		return lm, tea.Batch(cmd, func() tea.Msg {
 			time.Sleep(time.Second * testDelay)
-			newItems := lm.userGlobal.rh.lobbyRequest()
+			newItems := lm.userGlobal.ReqHandler.LobbyRequest()
 			return itemsMsg{
 				items: newItems,
 			}
@@ -279,14 +279,14 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 }
 
 type joinGameMsg struct {
-	gameId     gameId
-	userGlobal userGlobal
+	gameId     requests.GameId
+	userGlobal UserGlobal
 }
 
-func (m *lobbyModel) joinGame(game game) tea.Cmd {
+func (m *lobbyModel) joinGame(game requests.Game) tea.Cmd {
 	return func() tea.Msg {
-		gameId := gameId{GameId: game.GameId}
-		if m.userGlobal.rh.joinGameRequest(gameId, game.Server, m.userGlobal.username) {
+		gameId := requests.GameId{GameId: game.GameId}
+		if m.userGlobal.ReqHandler.JoinGameRequest(gameId, game.Server, m.userGlobal.Username) {
 			return joinGameMsg{
 				gameId:     gameId,
 				userGlobal: m.userGlobal,

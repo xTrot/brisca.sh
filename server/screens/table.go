@@ -1,8 +1,9 @@
-package main
+package screens
 
 import (
 	"fmt"
 
+	"brisca.sh/server/game"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -15,8 +16,8 @@ var (
 
 type tableModel struct {
 	deckSize    int
-	bottomCard  card
-	cardsInPlay []card
+	bottomCard  game.Card
+	cardsInPlay []game.Card
 
 	bottomCardStyle lipgloss.Style
 	renderEmoji     bool
@@ -25,11 +26,11 @@ type tableModel struct {
 func newTableModel(renderEmoji bool) tableModel {
 	return tableModel{
 		deckSize:   40,
-		bottomCard: newCard("BASTO:3"),
-		cardsInPlay: []card{
-			newCard("ESPADA:1"),
-			newCard("ORO:5"),
-			newCard("COPA:10"),
+		bottomCard: game.NewCard("BASTO:3"),
+		cardsInPlay: []game.Card{
+			game.NewCard("ESPADA:1"),
+			game.NewCard("ORO:5"),
+			game.NewCard("COPA:10"),
 		},
 		bottomCardStyle: lipgloss.NewStyle(),
 		renderEmoji:     renderEmoji,
@@ -43,7 +44,7 @@ func (tm tableModel) Init() tea.Cmd {
 func (tm tableModel) Update(msg tea.Msg) (tableModel, tea.Cmd) {
 
 	switch msg.(type) {
-	case swapBottomCardPayload:
+	case game.SwapBottomCardPayload:
 		tm.bottomCardStyle = bottomCardSwappedStyle
 	}
 
@@ -55,12 +56,12 @@ func (tm tableModel) renderCardsInPlay(width int, height int) string {
 		cip := ""
 		switch {
 		case len(tm.cardsInPlay) > 0:
-			cip += tm.cardsInPlay[0].renderCard(tm.renderEmoji)
+			cip += tm.cardsInPlay[0].RenderCard(tm.renderEmoji)
 			fallthrough
 		case len(tm.cardsInPlay) > 1:
 			cip += "\n  "
 			for i := 1; i < len(tm.cardsInPlay); i++ {
-				cip += tm.cardsInPlay[i].renderCard(tm.renderEmoji)
+				cip += tm.cardsInPlay[i].RenderCard(tm.renderEmoji)
 			}
 		}
 		return cip
@@ -81,7 +82,7 @@ rowLoop:
 			if !(index < cipSize) {
 				break rowLoop
 			}
-			cip += tm.cardsInPlay[index].renderCard(tm.renderEmoji)
+			cip += tm.cardsInPlay[index].RenderCard(tm.renderEmoji)
 		}
 		cip += padding
 	}
@@ -94,7 +95,7 @@ rowLoop:
 func (tm tableModel) View(width int, height int) string {
 	return fmt.Sprintf("Table:\n  Deck: %d\n  Life Card: %s\n  In Play: %s",
 		tm.deckSize,
-		tm.bottomCardStyle.Render(tm.bottomCard.renderCard(tm.renderEmoji)),
+		tm.bottomCardStyle.Render(tm.bottomCard.RenderCard(tm.renderEmoji)),
 		tm.renderCardsInPlay(width, height-3), // 3 new lines above.
 	)
 }

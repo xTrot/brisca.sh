@@ -1,4 +1,4 @@
-package main
+package screens
 
 import (
 	"github.com/charmbracelet/bubbles/help"

@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"brisca.sh/server/screens"
 	gossh "golang.org/x/crypto/ssh"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,7 +29,7 @@ var (
 		"Enddy": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCa4MMeQKYeAyEekyGOA0WlD/vFvlxQXu/yZV81wMWEKeplLTvMQGjfpsgA51BvmLAAzFhBnPloAFS6+dUvKlYJ27HbdI/6hLAxUPH19OwYD9Aks0utGIXqPRwPl+TVCM+4OZkvsd18rKueWJ/SYBeVudNzXECx9UmB2n33Rz4OLC+tKLuoYVgAd3LGIHsRS29o67OpPwHdW8zosCfQ6ZLD4oAinHqSIZCqfXXtrfee1F5hQNTxPTU47zyVNUshm9JaqrYQyFn5AWKjolcqOr3zt176rULsphZYcha9XpZ6u2M0YeJEkLUIrKAVoY3aTG0ZqBKMryLA4G89L+AQCcX1lxvMnU1SOotQ57C/CDC+iiqWF1VguU/23H80LVANYEenJYqgPhN3A42d7HchcaW8VTAwjLrrBSPT9F336oi+jQNGTPWfNndp9i0dlbPZbSRW89hOX+N5EHodWZPf09Wb5pvNm2Hyd2GCIoIhmF+kMyJnP3X6LX9ebn5jKK9mxiqsdjvZKlQLlhaLGHZmMJKyqWzOPKcBFPzU+h9/pUrqcmNQCP8djM8Al7z/JLeUqP9TIXv7W/yyVvMcAA/TgR/GvcXwV+JQFqi4x2EwaD+VMQeSBvGu01f0CVPZFepmDLBpSztzr0adk6f49aCNwXY+52s/Z3VxTjNblStqLFYAFw== enddyygf93@live.com",
 	}
 	allowedKeyTypes = "ssh-rsa, "
-	env             Environment
+	Env             Environment
 	keyPath         = ".ssh/id_ed25519"
 )
 
@@ -42,16 +43,16 @@ type Environment struct {
 	BrowserServer string `default:"http://localhost:8000"`
 }
 
-func main() {
+func Start() {
 	os.Setenv("GLAMOUR_STYLE", "dracula")
-	err := envconfig.Process("brisca", &env)
+	err := envconfig.Process("brisca", &Env)
 	if err != nil {
 		log.Fatal(err.Error())
 		panic("defaults loading failed.")
 	}
 
 	s, err := wish.NewServer(
-		wish.WithAddress(net.JoinHostPort(env.Host, env.Port)),
+		wish.WithAddress(net.JoinHostPort(Env.Host, Env.Port)),
 		wish.WithHostKeyPath(keyPath),
 		wish.WithPublicKeyAuth(keyHandler),           // This should be optional but isn't.
 		wish.WithKeyboardInteractiveAuth(skipThis()), // If this isn't added the PubKeyAuth will require a key.
@@ -67,18 +68,18 @@ func main() {
 		log.Error("Could not start server", "error", err)
 	}
 
-	if env.Debug {
+	if Env.Debug {
 		log.SetLevel(log.DebugLevel)
 		log.Helper()
 		log.SetReportCaller(true)
 		log.Debug("Debug Started")
 	}
 
-	log.Debug("Env:", "env", env)
+	log.Debug("Env:", "env", Env)
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	log.Info("Starting SSH server", "host", env.Host, "port", env.Port)
+	log.Info("Starting SSH server", "host", Env.Host, "port", Env.Port)
 	go func() {
 		if err = s.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
 			log.Error("Could not start server", "error", err)
@@ -118,7 +119,7 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	// your Bubble Tea model.
 	// renderer := bubbletea.MakeRenderer(s)
 
-	m := newModel(&s)
+	m := screens.NewRegisterScreen(&s, Env.BrowserServer)
 	return m, []tea.ProgramOption{tea.WithAltScreen()}
 }
 

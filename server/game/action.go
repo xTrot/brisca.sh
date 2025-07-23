@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"encoding/json"
@@ -27,69 +27,69 @@ const (
 // 	SEAT_NOT_AFK,
 // }
 
-type gameConfigPayload struct {
+type GameConfigPayload struct {
 	GameId         string `json:"gameId"`
 	GameType       string `json:"gameType"`
 	MaxPlayers     int    `json:"maxPlayers"`
 	SwapBottomCard bool   `json:"swapBottomCard"`
 }
 
-type gameStartedPayload struct {
-	Seats        []seat `json:"seats"`
+type GameStartedPayload struct {
+	Seats        []Seat `json:"seats"`
 	StartingSeat int    `json:"startingSeat"`
 }
 
-type seat struct {
+type Seat struct {
 	Seat     int    `json:"seat"`
 	Username string `json:"username"`
 }
 
-type gracePeriodEndedPayload struct{}
+type GracePeriodEndedPayload struct{}
 
-type swapBottomCardPayload struct{}
+type SwapBottomCardPayload struct{}
 
-type bottomCardSelectedPayload struct {
-	BottomCard string `json:"bottomCard"`
-	bottomCard card
+type BottomCardSelectedPayload struct {
+	CardString string `json:"bottomCard"`
+	Card       Card
 }
 
-type cardDrawnPayload struct {
+type CardDrawnPayload struct {
 	Seat int `json:"seat"`
 }
 
-type cardPlayedPayload struct {
-	Seat  int    `json:"seat"`
-	Index int    `json:"index"`
-	Card  string `json:"card"`
-	card  card
+type CardPlayedPayload struct {
+	Seat       int    `json:"seat"`
+	Index      int    `json:"index"`
+	CardString string `json:"card"`
+	Card       Card
 }
 
-type turnWonPayload struct {
+type TurnWonPayload struct {
 	Seat int `json:"seat"`
 }
 
-type gameWonPayload struct {
+type GameWonPayload struct {
 	Seat int    `json:"seat"`
 	Team string `json:"team"`
 }
 
-type seatAfkPayload struct {
+type SeatAfkPayload struct {
 	Seat int `json:"seat"`
 }
 
-type seatNotAfkPayload struct {
+type SeatNotAfkPayload struct {
 	Seat int `json:"seat"`
 }
 
 // Client side action payloads
 // ============================================================================
-type turnSwitchPayload struct{}
+type TurnSwitchPayload struct{}
 
-type undefinedActionPayload struct{}
+type UndefinedActionPayload struct{}
 
 // ============================================================================
 
-type action struct {
+type Action struct {
 	Type    string  `json:"type"`
 	Payload Payload `json:"payload"`
 }
@@ -101,32 +101,32 @@ type innerAction struct {
 	Payload map[string]any `json:"payload"`
 }
 
-func (a action) processAction(myTurn, gameOver bool, mySeat int) tea.Cmd {
+func (a Action) ProcessAction(myTurn, gameOver bool, mySeat int) tea.Cmd {
 	return func() tea.Msg {
 		slow := COMMON_WAIT
 		switch payload := a.Payload.(type) {
-		case gameConfigPayload:
+		case GameConfigPayload:
 			slow = 0
-		case gameStartedPayload:
+		case GameStartedPayload:
 			slow = 0
-		case bottomCardSelectedPayload:
+		case BottomCardSelectedPayload:
 			slow = 0
-		case gracePeriodEndedPayload:
-		case swapBottomCardPayload:
+		case GracePeriodEndedPayload:
+		case SwapBottomCardPayload:
 			if myTurn && !gameOver {
 				slow = 0
 			}
-		case cardDrawnPayload:
+		case CardDrawnPayload:
 			slow = time.Millisecond * 200
-		case cardPlayedPayload:
+		case CardPlayedPayload:
 			if payload.Seat == mySeat && !gameOver {
 				slow = 0
 			}
-		case turnWonPayload:
-		case gameWonPayload:
+		case TurnWonPayload:
+		case GameWonPayload:
 
 		// Client side actions
-		case turnSwitchPayload:
+		case TurnSwitchPayload:
 			slow = time.Millisecond * 200
 
 		}
@@ -135,7 +135,7 @@ func (a action) processAction(myTurn, gameOver bool, mySeat int) tea.Cmd {
 	}
 }
 
-func (a action) String() string {
+func (a Action) String() string {
 	return fmt.Sprintf("{Type:%s Payload:%s}", a.Type, a.Payload)
 }
 
@@ -173,7 +173,7 @@ func findOcurrence(bytes []byte, char byte, ocurrence int, dir int) int {
 	return found
 }
 
-func (a *action) UnmarshalJSON(b []byte) error {
+func (a *Action) UnmarshalJSON(b []byte) error {
 	var ia innerAction
 	err := json.Unmarshal(b, &ia)
 	if err != nil {
@@ -192,67 +192,67 @@ func (a *action) UnmarshalJSON(b []byte) error {
 
 	switch a.Type {
 	case "GAME_CONFIG":
-		gameConfig := gameConfigPayload{}
+		gameConfig := GameConfigPayload{}
 		err := json.Unmarshal(payloadBytes, &gameConfig)
 		if err != nil {
 			return err
 		}
 		a.Payload = gameConfig
 	case "GAME_STARTED":
-		gameStarted := gameStartedPayload{}
+		gameStarted := GameStartedPayload{}
 		err := json.Unmarshal(payloadBytes, &gameStarted)
 		if err != nil {
 			return err
 		}
 		a.Payload = gameStarted
 	case "BOTTOM_CARD_SELECTED":
-		bottomCard := bottomCardSelectedPayload{}
+		bottomCard := BottomCardSelectedPayload{}
 		err := json.Unmarshal(payloadBytes, &bottomCard)
 		if err != nil {
 			return err
 		}
-		bottomCard.bottomCard = newCard(bottomCard.BottomCard)
+		bottomCard.Card = NewCard(bottomCard.CardString)
 		a.Payload = bottomCard
 	case "GRACE_PERIOD_ENDED":
-		a.Payload = gracePeriodEndedPayload{}
+		a.Payload = GracePeriodEndedPayload{}
 	case "SWAP_BOTTOM_CARD":
-		a.Payload = swapBottomCardPayload{}
+		a.Payload = SwapBottomCardPayload{}
 	case "CARD_DRAWN":
-		cardDrawn := cardDrawnPayload{}
+		cardDrawn := CardDrawnPayload{}
 		err := json.Unmarshal(payloadBytes, &cardDrawn)
 		if err != nil {
 			return err
 		}
 		a.Payload = cardDrawn
 	case "CARD_PLAYED":
-		cardPlayed := cardPlayedPayload{}
+		cardPlayed := CardPlayedPayload{}
 		err := json.Unmarshal(payloadBytes, &cardPlayed)
 		if err != nil {
 			return err
 		}
-		cardPlayed.card = newCard(cardPlayed.Card)
+		cardPlayed.Card = NewCard(cardPlayed.CardString)
 		a.Payload = cardPlayed
 	case "TURN_WON":
-		turnWon := turnWonPayload{}
+		turnWon := TurnWonPayload{}
 		err := json.Unmarshal(payloadBytes, &turnWon)
 		if err != nil {
 			return err
 		}
 		a.Payload = turnWon
 	case "GAME_WON":
-		gameWon := gameWonPayload{}
+		gameWon := GameWonPayload{}
 		err := json.Unmarshal(payloadBytes, &gameWon)
 		if err != nil {
 			return err
 		}
 		a.Payload = gameWon
 	case "SEAT_AFK":
-		a.Payload = seatAfkPayload{}
+		a.Payload = SeatAfkPayload{}
 	case "SEAT_NOT_AFK":
-		a.Payload = seatNotAfkPayload{}
+		a.Payload = SeatNotAfkPayload{}
 	default:
 		log.Errorf("action.UnmarshalJSON: unexpected type: type = %s", a.Type)
-		a.Payload = undefinedActionPayload{}
+		a.Payload = UndefinedActionPayload{}
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-package main
+package screens
 
 // A simple program that opens the alternate screen buffer then counts down
 // from 5 and then exits.
@@ -6,6 +6,7 @@ package main
 import (
 	"time"
 
+	"brisca.sh/server/requests"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -55,15 +56,15 @@ func newWrKeyMap() *wrKeyMap {
 }
 
 type waitingRoomModel struct {
-	wr             waitingRoom
+	wr             requests.WaitingRoom
 	list           list.Model
 	keys           *wrKeyMap
 	descDelegate   list.DefaultDelegate
 	noDescDelegate list.DefaultDelegate
-	userGlobal     userGlobal
+	userGlobal     UserGlobal
 }
 
-func newWaitingRoom(userGlobal userGlobal) waitingRoomModel {
+func newWaitingRoom(userGlobal UserGlobal) waitingRoomModel {
 	var (
 		listKeys = newWrKeyMap()
 	)
@@ -72,7 +73,7 @@ func newWaitingRoom(userGlobal userGlobal) waitingRoomModel {
 	descDelegate := list.NewDefaultDelegate()
 	descDelegate.ShowDescription = true
 	wrm := waitingRoomModel{
-		wr:             waitingRoom{},
+		wr:             requests.WaitingRoom{},
 		list:           list.New([]list.Item{}, noDescDelegate, 0, 0),
 		keys:           listKeys,
 		descDelegate:   descDelegate,
@@ -98,7 +99,7 @@ func newWaitingRoom(userGlobal userGlobal) waitingRoomModel {
 			listKeys.leave,
 		}
 	}
-	wrm.list.Title = "User " + wrm.userGlobal.username
+	wrm.list.Title = "User " + wrm.userGlobal.Username
 	wrm.list.DisableQuitKeybindings()
 	wrm.list.SetFilteringEnabled(false)
 	wrm.list.SetShowStatusBar(false)
@@ -117,8 +118,8 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case updateWRMsg:
 		m.wr = msg.wr
-		cmd = m.list.SetItems(m.wr.items)
-		if m.wr.teams {
+		cmd = m.list.SetItems(m.wr.Items)
+		if m.wr.Teams {
 			m.list.SetDelegate(m.descDelegate)
 		}
 		cmds = append(cmds, cmd)
@@ -133,15 +134,15 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return gs, gs.Init()
 
 	case leaveGameMsg:
-		lobby := newLobby(m.userGlobal)
-		lobby.list.Title = "User: " + m.userGlobal.username
+		lobby := NewLobby(m.userGlobal)
+		lobby.list.Title = "User: " + m.userGlobal.Username
 		cmds = append(cmds, lobby.Init())
 		lm, cmd := lobby.Update(msg)
 		cmds = append(cmds, cmd)
 		return lm, tea.Batch(cmds...)
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = msg
+		m.userGlobal.SizeMsg = msg
 		h, v := docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
@@ -186,7 +187,7 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m waitingRoomModel) refreshSessionCheck() tea.Cmd {
 	return func() tea.Msg {
-		return m.userGlobal.rh.refreshSessionCheck(10 * time.Minute)
+		return m.userGlobal.ReqHandler.RefreshSessionCheck(10 * time.Minute)
 	}
 }
 
@@ -199,14 +200,14 @@ func (m *waitingRoomModel) every(interval time.Duration) tea.Cmd {
 }
 
 type updateWRMsg struct {
-	wr waitingRoom
+	wr requests.WaitingRoom
 }
 
 type readyToggleMsg struct{}
 
 func (m waitingRoomModel) readyToggle() tea.Cmd {
 	return func() tea.Msg {
-		if m.userGlobal.rh.readyRequest() {
+		if m.userGlobal.ReqHandler.ReadyRequest() {
 			return readyToggleMsg{}
 		} else {
 			return nil
@@ -218,7 +219,7 @@ type startGameMsg struct{}
 
 func (m waitingRoomModel) startGame() tea.Cmd {
 	return func() tea.Msg {
-		if m.userGlobal.rh.startGameRequest() {
+		if m.userGlobal.ReqHandler.StartGameRequest() {
 			return startGameMsg{}
 		} else {
 			return nil
@@ -230,7 +231,7 @@ type leaveGameMsg struct{}
 
 func (m waitingRoomModel) leaveGame() tea.Cmd {
 	return func() tea.Msg {
-		if m.userGlobal.rh.leaveGameRequest() {
+		if m.userGlobal.ReqHandler.LeaveGameRequest() {
 			return leaveGameMsg{}
 		} else {
 			return nil
@@ -239,7 +240,7 @@ func (m waitingRoomModel) leaveGame() tea.Cmd {
 }
 
 func (m *waitingRoomModel) updateWaitingRoom(t time.Time) tea.Msg {
-	newWR := m.userGlobal.rh.waitingRoomRequest()
+	newWR := m.userGlobal.ReqHandler.WaitingRoomRequest()
 
 	return updateWRMsg{
 		wr: newWR,
@@ -250,7 +251,7 @@ type changedTeamMsg bool
 
 func (m *waitingRoomModel) changeTeam(spectator bool) tea.Cmd {
 	return func() tea.Msg {
-		success := changedTeamMsg(m.userGlobal.rh.changeTeamRequest(spectator))
+		success := changedTeamMsg(m.userGlobal.ReqHandler.ChangeTeamRequest(spectator))
 		return success
 	}
 }

@@ -1,9 +1,10 @@
-package main
+package screens
 
 import (
 	"context"
 	"time"
 
+	"brisca.sh/server/requests"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
@@ -13,12 +14,12 @@ import (
 type joinGameModel struct {
 	form       *huh.Form // huh.Form is just a tea.Model
 	nextView   tea.Model
-	userGlobal userGlobal
+	userGlobal UserGlobal
 	gameId     *string
 	replay     bool
 }
 
-func newReplayGame(nv tea.Model, userGlobal userGlobal) joinGameModel {
+func newReplayGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
 	var gameId string
 	return joinGameModel{
 		gameId: &gameId,
@@ -35,7 +36,7 @@ func newReplayGame(nv tea.Model, userGlobal userGlobal) joinGameModel {
 	}
 }
 
-func newJoinGame(nv tea.Model, userGlobal userGlobal) joinGameModel {
+func newJoinGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
 	var gameId string
 	return joinGameModel{
 		gameId: &gameId,
@@ -64,7 +65,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.form.State == huh.StateCompleted {
-		var gameId gameId
+		var gameId requests.GameId
 		gameId.GameId = *m.gameId
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
@@ -81,7 +82,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.replay {
-			replay := m.userGlobal.rh.replayRequest(gameId)
+			replay := m.userGlobal.ReqHandler.ReplayRequest(gameId)
 
 			if replay != nil {
 				rgs := newReplayGSModel(m.userGlobal, replay)
@@ -91,7 +92,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		joined := m.userGlobal.rh.joinPrivateGameRequest(gameId, m.userGlobal.username)
+		joined := m.userGlobal.ReqHandler.JoinPrivateGameRequest(gameId, m.userGlobal.Username)
 
 		if joined {
 			wrm := newWaitingRoom(m.userGlobal)

@@ -1,9 +1,10 @@
-package main
+package screens
 
 import (
 	"fmt"
 	"time"
 
+	"brisca.sh/server/game"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -31,9 +32,9 @@ type winScreen struct {
 	scSize     int
 	countDone  int
 	style      lipgloss.Style
-	gameConfig gameConfigPayload
+	gameConfig game.GameConfigPayload
 	winString  string
-	userGlobal userGlobal
+	userGlobal UserGlobal
 	debounced  bool
 }
 
@@ -50,7 +51,7 @@ type doneCounting struct {
 	index int
 }
 
-func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWonPayload, userGlobal userGlobal) winScreen {
+func newWinScreen(gc *game.GameConfigPayload, players []playerModel, gameWon *game.GameWonPayload, userGlobal UserGlobal) winScreen {
 
 	var firstScoreCounter scoreCounter
 	var secondScoreCounter scoreCounter
@@ -60,8 +61,8 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 
 	switch gc.MaxPlayers {
 	case 2:
-		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.renderEmoji)
-		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.renderEmoji)
+		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.RenderEmoji)
+		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.RenderEmoji)
 		scSize = 2
 		switch gameWon.Seat {
 		case -1:
@@ -70,9 +71,9 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 			winString = players[gameWon.Seat].name + " won!!!"
 		}
 	case 3:
-		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.renderEmoji)
-		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.renderEmoji)
-		thirdScoreCounter = newScoreCounter(2, players[2].name, players[2].scorePile, userGlobal.renderEmoji)
+		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.RenderEmoji)
+		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.RenderEmoji)
+		thirdScoreCounter = newScoreCounter(2, players[2].name, players[2].scorePile, userGlobal.RenderEmoji)
 		scSize = 3
 		switch gameWon.Seat {
 		case -1:
@@ -83,8 +84,8 @@ func newWinScreen(gc *gameConfigPayload, players []playerModel, gameWon *gameWon
 	case 4:
 		teamAString := fmt.Sprintf("Team A:\n %s and %s", players[0].name, players[2].name)
 		teamBString := fmt.Sprintf("Team B:\n %s and %s", players[1].name, players[3].name)
-		firstScoreCounter = newScoreCounter(0, "Team A", append(players[0].scorePile, players[2].scorePile...), userGlobal.renderEmoji)
-		secondScoreCounter = newScoreCounter(1, "Team B", append(players[1].scorePile, players[3].scorePile...), userGlobal.renderEmoji)
+		firstScoreCounter = newScoreCounter(0, "Team A", append(players[0].scorePile, players[2].scorePile...), userGlobal.RenderEmoji)
+		secondScoreCounter = newScoreCounter(1, "Team B", append(players[1].scorePile, players[3].scorePile...), userGlobal.RenderEmoji)
 		scSize = 2
 		switch gameWon.Team {
 		case "A":
@@ -138,7 +139,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = msg
+		m.userGlobal.SizeMsg = msg
 		m.style = m.style.
 			Width(max(windowWidthMin, msg.Width) - 2).
 			Height(max(windowHighttMin, msg.Height) - 2)
@@ -148,7 +149,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.debounced {
-			lm := newLobby(m.userGlobal)
+			lm := NewLobby(m.userGlobal)
 			return lm, lm.Init()
 		}
 	case pretendCountMsg:

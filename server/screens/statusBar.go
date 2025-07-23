@@ -1,9 +1,11 @@
-package main
+package screens
 
 import (
 	"fmt"
 	"time"
 
+	"brisca.sh/server/game"
+	"brisca.sh/server/requests"
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
@@ -28,7 +30,7 @@ type statusBarModel struct {
 	mySeat         int
 	swapBottomCard bool
 	maxPlayers     int
-	swapCard       card
+	swapCard       game.Card
 	renderEmoji    bool
 }
 
@@ -58,22 +60,22 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 	case timer.TickMsg:
 		m.timer, cmd = m.timer.Update(msg)
 		cmds = append(cmds, cmd)
-	case mySeat:
+	case requests.MySeat:
 		m.mySeat = msg.Seat
 	case seatsMsg:
 		m.players = msg
-	case gameStartedPayload:
+	case game.GameStartedPayload:
 		m.turn = msg.StartingSeat
 		m.timer = timer.New(GRACE_LENGTH)
 		cmds = append(cmds, m.timer.Init())
-	case gracePeriodEndedPayload:
+	case game.GracePeriodEndedPayload:
 		m.hasStarted = true
 		m.timer = timer.New(TURN_LENGTH)
 		cmds = append(cmds, m.timer.Init())
-	case gameConfigPayload:
+	case game.GameConfigPayload:
 		m.maxPlayers = msg.MaxPlayers
 		m.swapBottomCard = msg.SwapBottomCard
-	case turnSwitchPayload:
+	case game.TurnSwitchPayload:
 		if m.maxPlayers == 0 {
 			errMsg := "m.maxPlayers must be set before " +
 				"case cardPlayedPayload: in statusBarModel.Update"
@@ -92,7 +94,7 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		}
 		m.timer = timer.New(timerLength)
 		cmds = append(cmds, m.timer.Init())
-	case turnWonPayload:
+	case game.TurnWonPayload:
 		m.iPlayed = false
 		m.cardsPlayed = 0
 		m.turn = msg.Seat
@@ -104,16 +106,16 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		}
 		m.timer = timer.New(timerLength)
 		cmds = append(cmds, m.timer.Init())
-	case seatAfkPayload:
+	case game.SeatAfkPayload:
 		m.players[msg.Seat].afk = true
-	case seatNotAfkPayload:
+	case game.SeatNotAfkPayload:
 		m.players[msg.Seat].afk = false
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m *statusBarModel) View(hand []card) string {
+func (m *statusBarModel) View(hand []game.Card) string {
 	if m.hasStarted {
 		var turnString string
 		if m.mySeat == m.turn {
@@ -124,7 +126,7 @@ func (m *statusBarModel) View(hand []card) string {
 
 		swapCardStatus := ""
 		if m.swapBottomCard && m.turn == m.mySeat && m.canSwap {
-			swapCardStatus = ", you can swap " + m.swapCard.renderCard(m.renderEmoji) + " for the life card"
+			swapCardStatus = ", you can swap " + m.swapCard.RenderCard(m.renderEmoji) + " for the life card"
 		}
 
 		return fmt.Sprintf("Status: %s, timer: %s%s", turnString, m.timer.View(), swapCardStatus)

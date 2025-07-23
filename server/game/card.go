@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"fmt"
@@ -34,20 +34,20 @@ var (
 	}
 )
 
-type card struct {
-	num   int
-	val   int
-	score int
+type Card struct {
+	Num   int
+	Val   int
+	Score int
 
-	emojiSuit string
-	charSuit  string
+	EmojiSuit string
+	CharSuit  string
 
 	// The original string from the server
-	suitString string
+	SuitString string
 }
 
-func newCard(cardString string) card {
-	var card card
+func NewCard(cardString string) Card {
+	var card Card
 
 	halves := strings.Split(cardString, ":")
 	suitString := halves[0]
@@ -61,51 +61,51 @@ func newCard(cardString string) card {
 
 	switch suitString {
 	case "ORO":
-		card.emojiSuit = "🪙"
+		card.EmojiSuit = "🪙"
 	case "COPA":
-		card.emojiSuit = "🏆"
+		card.EmojiSuit = "🏆"
 	case "BASTO":
-		card.emojiSuit = "🪵"
+		card.EmojiSuit = "🪵"
 	case "ESPADA":
-		card.emojiSuit = "⚔️"
+		card.EmojiSuit = "⚔️"
 	}
 	switch suitString {
 	case "ORO":
-		card.charSuit = "Or"
+		card.CharSuit = "Or"
 	case "COPA":
-		card.charSuit = "Co"
+		card.CharSuit = "Co"
 	case "BASTO":
-		card.charSuit = "Ba"
+		card.CharSuit = "Ba"
 	case "ESPADA":
-		card.charSuit = "Es"
+		card.CharSuit = "Es"
 	}
 
-	card.num = CARDS_WITHOUT_SKIP[index][CARD_NUMBER_INDEX]
-	card.val = CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX]
-	card.score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
+	card.Num = CARDS_WITHOUT_SKIP[index][CARD_NUMBER_INDEX]
+	card.Val = CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX]
+	card.Score = CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX]
 
-	card.suitString = suitString
+	card.SuitString = suitString
 
 	return card
 }
 
-func (m *card) renderCard(renderEmoji bool) string {
+func (m *Card) RenderCard(renderEmoji bool) string {
 	if renderEmoji {
-		return fmt.Sprintf("[%s:%2d]", m.emojiSuit, m.num)
+		return fmt.Sprintf("[%s:%2d]", m.EmojiSuit, m.Num)
 	} else {
-		return fmt.Sprintf("[%s:%2d]", m.charSuit, m.num)
+		return fmt.Sprintf("[%s:%2d]", m.CharSuit, m.Num)
 	}
 }
 
-func newBottomCard(c card) card {
+func NewBottomCard(c Card) Card {
 	// only a 2 of the same suit could do this
 	swapNum := 2
 	index := swapNum - 1
-	return card{
-		emojiSuit: c.emojiSuit,
-		charSuit:  c.charSuit,
-		num:       swapNum,
-		val:       CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX],
-		score:     CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX],
+	return Card{
+		EmojiSuit: c.EmojiSuit,
+		CharSuit:  c.CharSuit,
+		Num:       swapNum,
+		Val:       CARDS_WITHOUT_SKIP[index][CARD_VALUE_INDEX],
+		Score:     CARDS_WITHOUT_SKIP[index][CARD_SCORE_INDEX],
 	}
 }

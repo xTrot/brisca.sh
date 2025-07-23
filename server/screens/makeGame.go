@@ -1,11 +1,12 @@
-package main
+package screens
 
 import (
 	"context"
 	"log"
 	"time"
 
-	"brisca.sh/embedded"
+	"brisca.sh/server/embedded"
+	"brisca.sh/server/requests"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
@@ -14,14 +15,14 @@ import (
 type makeGameModel struct {
 	form       *huh.Form // huh.Form is just a tea.Model
 	nextView   tea.Model
-	userGlobal userGlobal
+	userGlobal UserGlobal
 	confirm    *bool
 
 	helpMd MarkdownModel
 	showMd bool
 }
 
-func newMakeGame(nv tea.Model, userGlobal userGlobal) makeGameModel {
+func newMakeGame(nv tea.Model, userGlobal UserGlobal) makeGameModel {
 	var confirm bool
 	return makeGameModel{
 		confirm: &confirm,
@@ -77,7 +78,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.nextView, m.nextView.Init()
 		}
 
-		gc := gameConfig{
+		gc := requests.GameConfig{
 			GameType:       m.form.GetString("gameType"),
 			MaxPlayers:     m.form.GetInt("maxPlayers"),
 			SwapBottomCard: m.form.GetBool("swapBottomCard"),
@@ -86,7 +87,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
 		defer cancel()
 
-		game := m.userGlobal.rh.makeGameRequest(gc)
+		game := m.userGlobal.ReqHandler.MakeGameRequest(gc)
 
 		err := spinner.New().
 			Type(spinner.Line).
@@ -98,7 +99,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Fatal(err)
 		}
 
-		if game.GameId == (newGame{}).GameId {
+		if game.GameId == (requests.Game{}).GameId {
 			return m.nextView, m.nextView.Init()
 		}
 

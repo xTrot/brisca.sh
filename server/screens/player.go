@@ -1,8 +1,9 @@
-package main
+package screens
 
 import (
 	"fmt"
 
+	"brisca.sh/server/game"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -27,7 +28,7 @@ var (
 type playerModel struct {
 	name      string
 	score     int
-	scorePile []card
+	scorePile []game.Card
 	handSize  int
 	boxX      int
 	boxY      int
@@ -40,16 +41,16 @@ func (pm playerModel) UpdateScore() int {
 	pileSize := len(pm.scorePile)
 	score := 0
 	for i := range pileSize {
-		score += pm.scorePile[i].score
+		score += pm.scorePile[i].Score
 	}
 	return score
 }
 
-func newPlayerModelFromSeat(s seat, renderEmoji bool) playerModel {
+func newPlayerModelFromSeat(s game.Seat, renderEmoji bool) playerModel {
 	return playerModel{
 		name:        s.Username,
 		score:       0,
-		scorePile:   []card{},
+		scorePile:   []game.Card{},
 		handSize:    3,
 		renderEmoji: renderEmoji,
 		afk:         false,
@@ -60,7 +61,7 @@ func newPlayerModel(renderEmoji bool) playerModel {
 	return playerModel{
 		name:        "Username",
 		score:       0,
-		scorePile:   []card{},
+		scorePile:   []game.Card{},
 		boxX:        2, // Coords for mySeat
 		boxY:        1, // Coords for mySeat
 		renderEmoji: renderEmoji,
@@ -100,7 +101,7 @@ rowLoop:
 			if !(index < spSize) {
 				break rowLoop // Breaks out of both loops
 			}
-			spString += pm.scorePile[reverseStart-index].renderCard(pm.renderEmoji)
+			spString += pm.scorePile[reverseStart-index].RenderCard(pm.renderEmoji)
 		}
 		spString += "\n  " // paddingBothSides
 	}

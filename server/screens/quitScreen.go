@@ -1,9 +1,9 @@
-package quitscreen
+package screens
 
 import (
 	"math/rand"
 
-	"brisca.sh/embedded"
+	"brisca.sh/server/embedded"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

@@ -1,4 +1,4 @@
-package main
+package screens
 
 import (
 	"github.com/charmbracelet/bubbles/help"
@@ -53,37 +53,37 @@ var keys = keyMap{
 	),
 }
 
-type helpModel struct {
-	keys keyMap
-	help help.Model
+type HelpModel struct {
+	Keys keyMap
+	Help help.Model
 }
 
-func newHelp() helpModel {
-	return helpModel{
-		keys: keys,
-		help: help.New(),
+func NewHelp() HelpModel {
+	return HelpModel{
+		Keys: keys,
+		Help: help.New(),
 	}
 }
 
-func (hm helpModel) Init() tea.Cmd {
-	hm.keys.Up.SetEnabled(false)
-	hm.keys.Down.SetEnabled(true)
+func (hm HelpModel) Init() tea.Cmd {
+	hm.Keys.Up.SetEnabled(false)
+	hm.Keys.Down.SetEnabled(true)
 	return nil
 }
 
-func (hm helpModel) Update(msg tea.Msg) (helpModel, tea.Cmd) {
+func (hm HelpModel) Update(msg tea.Msg) (HelpModel, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, hm.keys.Help):
-			hm.help.ShowAll = !hm.help.ShowAll
+		case key.Matches(msg, hm.Keys.Help):
+			hm.Help.ShowAll = !hm.Help.ShowAll
 		}
 	}
 	return hm, nil
 }
 
-func (hm helpModel) View() string {
+func (hm HelpModel) View() string {
 
-	return hm.help.View(hm.keys)
+	return hm.Help.View(hm.Keys)
 }

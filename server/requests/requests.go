@@ -1,4 +1,4 @@
-package main
+package requests
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"brisca.sh/server/game"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
@@ -22,19 +23,20 @@ const (
 	GAME    ServerType = iota
 )
 
-type requestHandler struct {
-	jar        *cookiejar.Jar
-	GameServer string
-	refreshBy  time.Time
+type Handler struct {
+	jar           *cookiejar.Jar
+	GameServer    string
+	BrowserServer string
+	RefreshBy     time.Time
 }
 
-type refreshByMsg time.Time
+type RefreshByMsg time.Time
 
-func (m *requestHandler) refreshSessionCheck(before time.Duration) tea.Msg {
+func (m *Handler) RefreshSessionCheck(before time.Duration) tea.Msg {
 	var rtn tea.Msg
 
 	now := time.Now().UTC()
-	expires := m.refreshBy.UTC()
+	expires := m.RefreshBy.UTC()
 	timeBefore := expires.Add(-before)
 	if !(now.After(timeBefore) && now.Before(expires)) {
 		return rtn
@@ -51,47 +53,47 @@ func (m *requestHandler) refreshSessionCheck(before time.Duration) tea.Msg {
 	return rtn
 }
 
-func newRequestHandler() requestHandler {
+func NewHandler() Handler {
 	jar, _ := cookiejar.New(nil)
-	return requestHandler{
+	return Handler{
 		jar: jar,
 	}
 }
 
-type register struct {
+type Register struct {
 	Username string `json:"username"`
 }
 
-type game struct {
+type Game struct {
 	GameId string `json:"gameId"`
 	Fill   string `json:"fill"`
 	Server string `json:"server"`
 }
 
-func (g game) Title() string       { return g.GameId }
-func (g game) Description() string { return "Fill: " + g.Fill }
-func (g game) FilterValue() string { return g.GameId }
+func (g Game) Title() string       { return g.GameId }
+func (g Game) Description() string { return "Fill: " + g.Fill }
+func (g Game) FilterValue() string { return g.GameId }
 
-type gameConfig struct {
+type GameConfig struct {
 	GameType       string `json:"gameType"`
 	MaxPlayers     int    `json:"maxPlayers"`
 	SwapBottomCard bool   `json:"swapBottomCard"`
 }
 
-type gamesList struct {
-	Games []game `json:"games"`
+type GamesList struct {
+	Games []Game `json:"games"`
 }
 
-type player struct {
+type Player struct {
 	Ready bool   `json:"ready"`
 	Name  string `json:"name"`
 	Team  string `json:"team"` // Only relevant for 4 player games.
 }
 
-func (p player) Title() string       { return p.Name + ": " + p.ready() }
-func (p player) Description() string { return "Team: " + p.Team }
-func (p player) FilterValue() string { return p.Name }
-func (p player) ready() string {
+func (p Player) Title() string       { return p.Name + ": " + p.ReadyString() }
+func (p Player) Description() string { return "Team: " + p.Team }
+func (p Player) FilterValue() string { return p.Name }
+func (p Player) ReadyString() string {
 	if p.Ready {
 		return "ready"
 	} else {
@@ -99,32 +101,32 @@ func (p player) ready() string {
 	}
 }
 
-type waitingRoom struct {
-	Players []player `json:"players"`
-	Fill    string   `json:"fill"`
-	Started bool     `json:"started"`
-	Type    string   `json:"type"`
-	items   []list.Item
-	teams   bool
-}
-
-type newGame struct {
+type NewGame struct {
 	GameId string `json:"gameId"`
 }
 
-type mySeat struct {
+type MySeat struct {
 	Seat int `json:"seat"`
 }
 
 // {"port":"9004","host":"browser","expiration":"2025-05-21T23:13:58.220082540Z"}
-type lease struct {
+type Lease struct {
 	Port          string `json:"port"`
 	Host          string `json:"host"`
 	ExpirationStr string `json:"expiration"`
-	expiration    time.Time
+	Expiration    time.Time
 }
 
-func (wr waitingRoom) String() string {
+type WaitingRoom struct {
+	Players []Player `json:"players"`
+	Fill    string   `json:"fill"`
+	Started bool     `json:"started"`
+	Type    string   `json:"type"`
+	Items   []list.Item
+	Teams   bool
+}
+
+func (wr WaitingRoom) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("fill:")
 	sb.WriteString(wr.Fill)
@@ -136,7 +138,7 @@ func (wr waitingRoom) String() string {
 	}
 	for i := range wr.Players {
 		sb.WriteString(" ready:")
-		sb.WriteString(wr.Players[i].ready())
+		sb.WriteString(wr.Players[i].ReadyString())
 		sb.WriteString(" name:")
 		sb.WriteString(wr.Players[i].Name)
 		sb.WriteString(" team:")
@@ -145,7 +147,7 @@ func (wr waitingRoom) String() string {
 	return sb.String()
 }
 
-type gameId struct {
+type GameId struct {
 	GameId string `json:"gameId"`
 }
 
@@ -153,10 +155,10 @@ type handIndex struct {
 	Index int `json:"index"`
 }
 
-func (m requestHandler) statusRequest(stype ServerType) bool {
+func (m Handler) StatusRequest(stype ServerType) bool {
 	var url string
 	if stype == BROWSER {
-		url = env.BrowserServer
+		url = m.BrowserServer
 	} else {
 		url = m.GameServer
 	}
@@ -176,8 +178,7 @@ func (m requestHandler) statusRequest(stype ServerType) bool {
 	return true
 }
 
-// {"username" : "Guest"}
-func (m *requestHandler) registerRequest(register register, server string) bool {
+func (m *Handler) RegisterRequest(register Register, server string) bool {
 	payload, _ := json.Marshal(register)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/register", server)
@@ -206,8 +207,8 @@ func (m *requestHandler) registerRequest(register register, server string) bool 
 		if cookie.Name != "userId" {
 			continue
 		}
-		m.refreshBy = cookie.Expires
-		log.Debug("Cookies from body: ", "cookie", cookie, "m.refreshBy", m.refreshBy)
+		m.RefreshBy = cookie.Expires
+		log.Debug("Cookies from body: ", "cookie", cookie, "m.refreshBy", m.RefreshBy)
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
@@ -215,8 +216,8 @@ func (m *requestHandler) registerRequest(register register, server string) bool 
 	return true
 }
 
-func (m requestHandler) lobbyRequest() []list.Item {
-	requestURL := fmt.Sprintf("%s/lobby", env.BrowserServer)
+func (m Handler) LobbyRequest() []list.Item {
+	requestURL := fmt.Sprintf("%s/lobby", m.BrowserServer)
 	items := []list.Item{}
 
 	client := &http.Client{
@@ -243,7 +244,7 @@ func (m requestHandler) lobbyRequest() []list.Item {
 		return items
 	}
 
-	games := gamesList{}
+	games := GamesList{}
 	json.Unmarshal([]byte(body.String()), &games)
 
 	for i := range games.Games {
@@ -253,13 +254,13 @@ func (m requestHandler) lobbyRequest() []list.Item {
 	return items
 }
 
-func (m *requestHandler) makeGameRequest(gc gameConfig) newGame {
+func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 	payload, _ := json.Marshal(gc)
 	reader := bytes.NewReader(payload)
-	game := newGame{}
+	game := NewGame{}
 
-	requestURL := fmt.Sprintf("%s/lease", env.BrowserServer)
-	lease := lease{}
+	requestURL := fmt.Sprintf("%s/lease", m.BrowserServer)
+	lease := Lease{}
 
 	client := &http.Client{Jar: m.jar}
 
@@ -289,7 +290,7 @@ func (m *requestHandler) makeGameRequest(gc gameConfig) newGame {
 	if err != nil {
 		log.Error("Error parsing time by RFC3339 failed.", "lease.ExpirationStr", lease.ExpirationStr, "err", err)
 	}
-	lease.expiration = exp
+	lease.Expiration = exp
 
 	tmpGameServer := "http://" + lease.Host + ":" + lease.Port
 
@@ -321,12 +322,12 @@ func (m *requestHandler) makeGameRequest(gc gameConfig) newGame {
 
 	m.GameServer = tmpGameServer
 
-	log.Debug("Configured Server: ", "GameServer", m.GameServer, "now", time.Now(), "leaseExpires:", lease.expiration)
+	log.Debug("Configured Server: ", "GameServer", m.GameServer, "now", time.Now(), "leaseExpires:", lease.Expiration)
 
 	return game
 }
 
-func (m requestHandler) waitingRoomRequest() waitingRoom {
+func (m Handler) WaitingRoomRequest() WaitingRoom {
 	requestURL := fmt.Sprintf("%s/waitingroom", m.GameServer)
 	items := []list.Item{}
 
@@ -337,12 +338,12 @@ func (m requestHandler) waitingRoomRequest() waitingRoom {
 	res, err := client.Get(requestURL)
 	if err != nil {
 		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
-		return waitingRoom{}
+		return WaitingRoom{}
 	}
 
 	if res.StatusCode != http.StatusOK {
 		log.Error("bad status making http request: %d\n", res.StatusCode)
-		return waitingRoom{}
+		return WaitingRoom{}
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
@@ -351,26 +352,26 @@ func (m requestHandler) waitingRoomRequest() waitingRoom {
 	_, err = io.Copy(body, res.Body)
 	if err != nil {
 		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
-		return waitingRoom{}
+		return WaitingRoom{}
 	}
 
-	waitingroom := waitingRoom{}
+	waitingroom := WaitingRoom{}
 	json.Unmarshal([]byte(body.String()), &waitingroom)
 
 	for i := range waitingroom.Players {
 		items = append(items, waitingroom.Players[i])
 	}
 
-	waitingroom.items = items
+	waitingroom.Items = items
 
 	if waitingroom.Fill[2] == '4' && waitingroom.Type != "solo" {
-		waitingroom.teams = true
+		waitingroom.Teams = true
 	}
 
 	return waitingroom
 }
 
-func (m requestHandler) leaveGameRequest() bool {
+func (m Handler) LeaveGameRequest() bool {
 	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/leavegame", m.GameServer)
 
@@ -394,7 +395,7 @@ func (m requestHandler) leaveGameRequest() bool {
 	return true
 }
 
-func (m requestHandler) readyRequest() bool {
+func (m Handler) ReadyRequest() bool {
 	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/ready", m.GameServer)
 
@@ -416,7 +417,7 @@ func (m requestHandler) readyRequest() bool {
 	return true
 }
 
-func (m requestHandler) startGameRequest() bool {
+func (m Handler) StartGameRequest() bool {
 	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/startgame", m.GameServer)
 
@@ -438,18 +439,18 @@ func (m requestHandler) startGameRequest() bool {
 	return true
 }
 
-func (m *requestHandler) joinGameRequest(gameId gameId, server, username string) bool {
+func (m *Handler) JoinGameRequest(gameId GameId, server, username string) bool {
 	payload, _ := json.Marshal(gameId)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("http://%s/joingame", server)
 
 	tmpGameServer := "http://" + server
 
-	reg := register{
+	reg := Register{
 		Username: username,
 	}
 
-	success := m.registerRequest(reg, tmpGameServer)
+	success := m.RegisterRequest(reg, tmpGameServer)
 	if !success {
 		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
 		return false
@@ -477,8 +478,8 @@ func (m *requestHandler) joinGameRequest(gameId gameId, server, username string)
 	return true
 }
 
-func (m *requestHandler) joinPrivateGameRequest(gameId gameId, username string) bool {
-	requestURL := fmt.Sprintf("%s/joinprivategame?gameId=%s", env.BrowserServer, gameId.GameId)
+func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) bool {
+	requestURL := fmt.Sprintf("%s/joinprivategame?gameId=%s", m.BrowserServer, gameId.GameId)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -497,7 +498,7 @@ func (m *requestHandler) joinPrivateGameRequest(gameId gameId, username string) 
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
-	var game game
+	var game Game
 
 	body := new(strings.Builder)
 	_, err = io.Copy(body, res.Body)
@@ -510,11 +511,11 @@ func (m *requestHandler) joinPrivateGameRequest(gameId gameId, username string) 
 
 	tmpGameServer := "http://" + game.Server
 
-	reg := register{
+	reg := Register{
 		Username: username,
 	}
 
-	success := m.registerRequest(reg, tmpGameServer)
+	success := m.RegisterRequest(reg, tmpGameServer)
 	if !success {
 		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
 		return false
@@ -546,9 +547,9 @@ func (m *requestHandler) joinPrivateGameRequest(gameId gameId, username string) 
 	return true
 }
 
-func (m requestHandler) handRequest() []card {
+func (m Handler) HandRequest() []game.Card {
 	requestURL := fmt.Sprintf("%s/hand", m.GameServer)
-	var hand []card
+	var hand []game.Card
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -582,16 +583,16 @@ func (m requestHandler) handRequest() []card {
 	return hand
 }
 
-func handFromStrings(handStrings []string) []card {
-	var hand []card
+func handFromStrings(handStrings []string) []game.Card {
+	var hand []game.Card
 	for i := range len(handStrings) {
-		hand = append(hand, newCard(handStrings[i]))
+		hand = append(hand, game.NewCard(handStrings[i]))
 	}
 	return hand
 }
 
-func (m requestHandler) playCardRequest(index handIndex) bool {
-	payload, _ := json.Marshal(index)
+func (m Handler) PlayCardRequest(index int) bool {
+	payload, _ := json.Marshal(handIndex{Index: index})
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/playcard", m.GameServer)
 
@@ -615,8 +616,8 @@ func (m requestHandler) playCardRequest(index handIndex) bool {
 	return true
 }
 
-func (m requestHandler) actionsRequest() []action {
-	var actions []action
+func (m Handler) ActionsRequest() []game.Action {
+	var actions []game.Action
 	requestURL := fmt.Sprintf("%s/actions", m.GameServer)
 
 	client := &http.Client{
@@ -648,8 +649,8 @@ func (m requestHandler) actionsRequest() []action {
 	return actions
 }
 
-func (m requestHandler) mySeatRequest() mySeat {
-	var seat mySeat
+func (m Handler) MySeatRequest() MySeat {
+	var seat MySeat
 	requestURL := fmt.Sprintf("%s/seat", m.GameServer)
 
 	client := &http.Client{
@@ -680,7 +681,7 @@ func (m requestHandler) mySeatRequest() mySeat {
 	return seat
 }
 
-func (m requestHandler) changeTeamRequest(spectator bool) bool {
+func (m Handler) ChangeTeamRequest(spectator bool) bool {
 	reader := bytes.NewReader([]byte{})
 	if spectator {
 		reader = bytes.NewReader([]byte("{team:S}")) // Not worth implementing the JSON.
@@ -708,7 +709,7 @@ func (m requestHandler) changeTeamRequest(spectator bool) bool {
 	return true
 }
 
-func (m requestHandler) swapBottomCardRequest() bool {
+func (m Handler) SwapBottomCardRequest() bool {
 	reader := bytes.NewReader([]byte{})
 
 	requestURL := fmt.Sprintf("%s/swapBottomCard", m.GameServer)
@@ -733,8 +734,8 @@ func (m requestHandler) swapBottomCardRequest() bool {
 	return true
 }
 
-func (m requestHandler) replayRequest(gameId gameId) []action {
-	requestURL := fmt.Sprintf("%s/replay?gameId=%s", env.BrowserServer, gameId.GameId)
+func (m Handler) ReplayRequest(gameId GameId) []game.Action {
+	requestURL := fmt.Sprintf("%s/replay?gameId=%s", m.BrowserServer, gameId.GameId)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -760,15 +761,15 @@ func (m requestHandler) replayRequest(gameId gameId) []action {
 		return nil
 	}
 
-	var actions []action
+	var actions []game.Action
 	json.Unmarshal([]byte(body.String()), &actions)
 
 	return actions
 }
 
-func (m *requestHandler) refreshSessionRequest() tea.Msg {
-	var msg refreshByMsg
-	requestURL := fmt.Sprintf("%s/refresh", env.BrowserServer)
+func (m *Handler) refreshSessionRequest() tea.Msg {
+	var msg RefreshByMsg
+	requestURL := fmt.Sprintf("%s/refresh", m.BrowserServer)
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -791,7 +792,7 @@ func (m *requestHandler) refreshSessionRequest() tea.Msg {
 		if cookie.Name != "userId" {
 			continue
 		}
-		msg = refreshByMsg(cookie.Expires)
+		msg = RefreshByMsg(cookie.Expires)
 		log.Debug("Cookies from body: ", "cookie", cookie)
 	}
 

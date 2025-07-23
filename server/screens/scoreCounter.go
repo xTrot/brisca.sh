@@ -1,9 +1,10 @@
-package main
+package screens
 
 import (
 	"fmt"
 	"time"
 
+	"brisca.sh/server/game"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -13,7 +14,7 @@ import (
 type scoreCounter struct {
 	index        int
 	name         string
-	cards        []card
+	cards        []game.Card
 	style        lipgloss.Style
 	spinner      spinner.Model
 	countedCards []countedCard
@@ -25,11 +26,11 @@ type scoreCounter struct {
 
 type countedCard struct {
 	duration time.Duration
-	card     card
+	card     game.Card
 	total    int
 }
 
-func newScoreCounter(index int, name string, cards []card, renderEmoji bool) scoreCounter {
+func newScoreCounter(index int, name string, cards []game.Card, renderEmoji bool) scoreCounter {
 	const showLastResults = 5
 
 	sp := spinner.New()
@@ -81,7 +82,7 @@ func (m scoreCounter) Update(msg tea.Msg) (scoreCounter, tea.Cmd) {
 		return m, cmd
 	case pretendCountMsg:
 		d := time.Duration(msg.time)
-		m.total += msg.card.score
+		m.total += msg.card.Score
 		res := countedCard{card: msg.card, duration: d, total: m.total}
 		m.countedCards = append(m.countedCards[1:], res)
 		m.counted++
@@ -110,7 +111,7 @@ func (m scoreCounter) View() string {
 			s += "..........................\n" // Width 26 equal to else statement
 		} else {
 			s += fmt.Sprintf("%s Worth:%2d Tally:%3d\n", // Width 26 equal to if statement
-				res.card.renderCard(m.renderEmoji), res.card.score, res.total)
+				res.card.RenderCard(m.renderEmoji), res.card.Score, res.total)
 		}
 	}
 
@@ -120,12 +121,12 @@ func (m scoreCounter) View() string {
 // pretendCountMsg is sent when a pretend process completes.
 type pretendCountMsg struct {
 	time time.Duration
-	card card
+	card game.Card
 	id   int
 }
 
 // pretendProcess simulates a long-running process.
-func (m scoreCounter) runPretendCount(card card) tea.Cmd {
+func (m scoreCounter) runPretendCount(card game.Card) tea.Cmd {
 	return func() tea.Msg {
 		pause := time.Duration(rand.Int63n(499)+100) * time.Millisecond
 		time.Sleep(pause)

@@ -1,10 +1,12 @@
-package main
+package screens
 
 import (
 	"fmt"
 	"slices"
 	"time"
 
+	"brisca.sh/server/game"
+	"brisca.sh/server/requests"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/timer"
@@ -52,40 +54,40 @@ type box struct {
 }
 
 type actionCache struct {
-	actions     []action
+	actions     []game.Action
 	refreshTime time.Duration
 	processing  int
 	processed   int
 }
 
 type newActionsMsg struct {
-	actions  []action
+	actions  []game.Action
 	gameOver bool
 }
 
 func (m *gsModel) Refresh() tea.Cmd {
 	return tea.Every(m.actionCache.refreshTime, func(t time.Time) tea.Msg {
-		var fetched []action
+		var fetched []game.Action
 		var msg newActionsMsg
 		if !m.gameOver {
-			fetched = m.userGlobal.rh.actionsRequest()
+			fetched = m.userGlobal.ReqHandler.ActionsRequest()
 		}
 		msg.actions, msg.gameOver = injectClientActions(fetched)
 		return msg
 	})
 }
 
-func injectClientActions(fetched []action) ([]action, bool) {
-	var effective []action
+func injectClientActions(fetched []game.Action) ([]game.Action, bool) {
+	var effective []game.Action
 	var before bool
-	var clientAction action
+	var clientAction game.Action
 	var gameOver bool
 	for _, a := range fetched {
 		switch a.Payload.(type) {
-		case cardPlayedPayload:
+		case game.CardPlayedPayload:
 			before = false
-			clientAction = action{Type: "turn_switch", Payload: turnSwitchPayload{}}
-		case gameWonPayload:
+			clientAction = game.Action{Type: "turn_switch", Payload: game.TurnSwitchPayload{}}
+		case game.GameWonPayload:
 			gameOver = true
 		default:
 			effective = append(effective, a)
@@ -107,7 +109,7 @@ func (m *gsModel) ProcessAction() tea.Cmd {
 		m.actionCache.processing == m.actionCache.processed {
 		m.actionCache.processing++
 		cmd := m.actionCache.actions[m.actionCache.processing].
-			processAction(m.statusBar.isMyTurn(), m.gameOver, m.statusBar.mySeat)
+			ProcessAction(m.statusBar.isMyTurn(), m.gameOver, m.statusBar.mySeat)
 		return cmd
 	} else {
 		return nil
@@ -118,21 +120,21 @@ type gsModel struct {
 	spinner      spinner.Model
 	index        int
 	boxes        [3][3]box
-	hand         []card
+	hand         []game.Card
 	selectedCard int
 	actionCache  actionCache
 	playerSeats  []playerModel
 	table        tableModel
-	gameConfig   gameConfigPayload
+	gameConfig   game.GameConfigPayload
 	statusBar    statusBarModel
-	userGlobal   userGlobal
+	userGlobal   UserGlobal
 	help         gameScreenHelpModel
 	cheatSheet   MarkdownModel
 	showCheat    bool
 	gameOver     bool
 }
 
-func newReplayGSModel(userGlobal userGlobal, actions []action) gsModel {
+func newReplayGSModel(userGlobal UserGlobal, actions []game.Action) gsModel {
 	m := newGSModel(userGlobal)
 
 	m.actionCache.actions, m.gameOver = injectClientActions(actions)
@@ -140,7 +142,7 @@ func newReplayGSModel(userGlobal userGlobal, actions []action) gsModel {
 	return m
 }
 
-func newGSModel(userGlobal userGlobal) gsModel {
+func newGSModel(userGlobal UserGlobal) gsModel {
 	m := gsModel{
 		userGlobal: userGlobal,
 	}
@@ -165,20 +167,20 @@ func newGSModel(userGlobal userGlobal) gsModel {
 	m.boxes[2][2].style = emptyBoxStyle
 	m.selectedCard = 0
 	m.actionCache = actionCache{
-		actions:     []action{},
+		actions:     []game.Action{},
 		refreshTime: time.Millisecond * 200,
 		processing:  -1,
 		processed:   -1,
 	}
-	m.hand = []card{}
+	m.hand = []game.Card{}
 	m.playerSeats = []playerModel{
-		newPlayerModel(m.userGlobal.renderEmoji),
-		newPlayerModel(m.userGlobal.renderEmoji),
-		newPlayerModel(m.userGlobal.renderEmoji),
-		newPlayerModel(m.userGlobal.renderEmoji),
+		newPlayerModel(m.userGlobal.RenderEmoji),
+		newPlayerModel(m.userGlobal.RenderEmoji),
+		newPlayerModel(m.userGlobal.RenderEmoji),
+		newPlayerModel(m.userGlobal.RenderEmoji),
 	}
-	m.table = newTableModel(userGlobal.renderEmoji)
-	m.statusBar = newStatusBar(m.playerSeats, userGlobal.renderEmoji)
+	m.table = newTableModel(userGlobal.RenderEmoji)
+	m.statusBar = newStatusBar(m.playerSeats, userGlobal.RenderEmoji)
 	m.help = newGSHelp()
 	m.cheatSheet = NewCheatSheetModel()
 	return m
@@ -192,7 +194,7 @@ func (m gsModel) Init() tea.Cmd {
 
 func (m gsModel) getMySeat() tea.Cmd {
 	return func() tea.Msg {
-		mySeat := m.userGlobal.rh.mySeatRequest()
+		mySeat := m.userGlobal.ReqHandler.MySeatRequest()
 		return mySeat
 	}
 }
@@ -211,7 +213,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cheatSheet.Style = msg.csStyle
 		return m, nil
 	case tea.WindowSizeMsg:
-		m.userGlobal.sizeMsg = msg
+		m.userGlobal.SizeMsg = msg
 		return m.updateWindow(msg)
 	case newActionsMsg:
 		if len(msg.actions) > 0 {
@@ -225,14 +227,14 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmd = m.ProcessAction()
 		cmds = append(cmds, cmd)
-	case refreshByMsg:
-		m.userGlobal.rh.refreshBy = time.Time(msg)
+	case requests.RefreshByMsg:
+		m.userGlobal.ReqHandler.RefreshBy = time.Time(msg)
 	case tea.KeyMsg:
 		cmd = m.refreshSessionCheck()
 		cmds = append(cmds, cmd)
 		switch {
 		case key.Matches(msg, m.help.keys.Quit):
-			m.userGlobal.rh.leaveGameRequest()
+			m.userGlobal.ReqHandler.LeaveGameRequest()
 			return m, tea.Quit
 		// case "q":
 		// 	m.userGlobal.rh.leaveGameRequest()
@@ -282,7 +284,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.swapCheck()
 
 		// All Payload case statement must update ac processed
-	case gameConfigPayload:
+	case game.GameConfigPayload:
 		m.actionCache.processed++
 		m.gameConfig = msg
 		m.statusBar, cmd = m.statusBar.Update(msg)
@@ -294,7 +296,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.boxes[1][0].style = m.boxes[1][0].style.BorderStyle(lipgloss.NormalBorder()) // Adding 2nd player box
 			m.boxes[1][2].style = m.boxes[1][2].style.BorderStyle(lipgloss.NormalBorder()) // Adding 4th player box
 		}
-	case gameStartedPayload:
+	case game.GameStartedPayload:
 		m.actionCache.processed++
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
@@ -303,56 +305,56 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.gameConfig.MaxPlayers == 3 {
 			m.table.deckSize -= 1
 		}
-		m.table.cardsInPlay = []card{}
+		m.table.cardsInPlay = []game.Card{}
 		cmd = m.processSeats(msg.Seats)
 		cmds = append(cmds, cmd)
-	case bottomCardSelectedPayload:
+	case game.BottomCardSelectedPayload:
 		m.actionCache.processed++
-		m.statusBar.swapCard = newCard(msg.bottomCard.suitString + ":2")
-		m.table.bottomCard = msg.bottomCard
-	case gracePeriodEndedPayload:
+		m.statusBar.swapCard = game.NewCard(msg.Card.SuitString + ":2")
+		m.table.bottomCard = msg.Card
+	case game.GracePeriodEndedPayload:
 		m.actionCache.processed++
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-	case swapBottomCardPayload:
+	case game.SwapBottomCardPayload:
 		m.actionCache.processed++
-		m.table.bottomCard = newBottomCard(m.table.bottomCard)
+		m.table.bottomCard = game.NewBottomCard(m.table.bottomCard)
 		cmds = append(cmds, m.updateHand(false))
 		m.table, cmd = m.table.Update(msg)
 		cmds = append(cmds, cmd)
-	case cardDrawnPayload:
+	case game.CardDrawnPayload:
 		m.actionCache.processed++
 		m.table.deckSize--
 		m.playerSeats[msg.Seat].handSize++
 		cmds = append(cmds, m.updateHand(false))
-	case cardPlayedPayload:
+	case game.CardPlayedPayload:
 		m.actionCache.processed++
-		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.card)
+		m.table.cardsInPlay = append(m.table.cardsInPlay, msg.Card)
 		m.playerSeats[msg.Seat].handSize--
-	case turnSwitchPayload:
+	case game.TurnSwitchPayload:
 		m.actionCache.processed++
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-	case turnWonPayload:
+	case game.TurnWonPayload:
 		m.actionCache.processed++
 		slices.Reverse(m.table.cardsInPlay)
 		m.playerSeats[msg.Seat].scorePile = append(m.playerSeats[msg.Seat].scorePile, m.table.cardsInPlay...)
 		m.playerSeats[msg.Seat].score = m.playerSeats[msg.Seat].UpdateScore()
-		m.table.cardsInPlay = []card{}
+		m.table.cardsInPlay = []game.Card{}
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-	case gameWonPayload:
+	case game.GameWonPayload:
 		m.actionCache.processed++
 		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
 		return ws, ws.Init()
-	case undefinedActionPayload:
+	case game.UndefinedActionPayload:
 		m.actionCache.processed++
-	case seatAfkPayload:
+	case game.SeatAfkPayload:
 		m.actionCache.processed++
 		m.playerSeats[msg.Seat].afk = true
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
-	case seatNotAfkPayload:
+	case game.SeatNotAfkPayload:
 		m.actionCache.processed++
 		m.playerSeats[msg.Seat].afk = true
 		m.statusBar, cmd = m.statusBar.Update(msg)
@@ -365,7 +367,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd, m.userGlobal.LastWindowSizeReplay())
-	case mySeat:
+	case requests.MySeat:
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.Refresh())
@@ -376,17 +378,17 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *gsModel) refreshSessionCheck() tea.Cmd {
 	return func() tea.Msg {
-		return m.userGlobal.rh.refreshSessionCheck(14 * time.Minute)
+		return m.userGlobal.ReqHandler.RefreshSessionCheck(14 * time.Minute)
 	}
 }
 
 type seatsMsg []playerModel
 
-func (m gsModel) processSeats(seats []seat) tea.Cmd {
+func (m gsModel) processSeats(seats []game.Seat) tea.Cmd {
 	return func() tea.Msg {
 		var seatsMsg seatsMsg
 		for i := range seats {
-			player := newPlayerModelFromSeat(seats[i], m.userGlobal.renderEmoji)
+			player := newPlayerModelFromSeat(seats[i], m.userGlobal.RenderEmoji)
 			// This part only works because case mySeat: happens first then seatsMsg
 			adjustedSeat := (i - m.statusBar.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
 			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.statusBar.turn, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
@@ -517,20 +519,20 @@ func (m *gsModel) handView() string {
 	for i := range m.hand {
 		card := (m.hand)[i]
 		if m.selectedCard == i {
-			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(card.renderCard(m.userGlobal.renderEmoji)))
+			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(card.RenderCard(m.userGlobal.RenderEmoji)))
 		} else {
-			s += fmt.Sprintf("%2d:%s", i+1, card.renderCard(m.userGlobal.renderEmoji))
+			s += fmt.Sprintf("%2d:%s", i+1, card.RenderCard(m.userGlobal.RenderEmoji))
 		}
 	}
 	return s
 }
 
 type updateHandMsg struct {
-	hand []card
+	hand []game.Card
 }
 
 type localUpdateHandMsg struct {
-	hand []card
+	hand []game.Card
 }
 
 func (m *gsModel) updateHand(delay bool) tea.Cmd {
@@ -541,7 +543,7 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 		if m.gameOver {
 			return nil
 		}
-		newHand := m.userGlobal.rh.handRequest()
+		newHand := m.userGlobal.ReqHandler.HandRequest()
 
 		return updateHandMsg{newHand}
 	}
@@ -554,7 +556,7 @@ func (m *gsModel) playCard(index int) tea.Cmd {
 			if handSize <= index {
 				return nil
 			}
-			newHand := []card{}
+			newHand := []game.Card{}
 			if len(m.hand) != 1 {
 				for i := range m.hand {
 					if i == index {
@@ -563,8 +565,7 @@ func (m *gsModel) playCard(index int) tea.Cmd {
 					newHand = append(newHand, (m.hand)[i])
 				}
 			}
-			index := handIndex{Index: index}
-			if !m.userGlobal.rh.playCardRequest(index) {
+			if !m.userGlobal.ReqHandler.PlayCardRequest(index) {
 				return nil
 			}
 			return localUpdateHandMsg{newHand}
@@ -576,7 +577,7 @@ func (m *gsModel) playCard(index int) tea.Cmd {
 func (m *gsModel) swapBottomCard() tea.Cmd {
 	if m.statusBar.isMyTurn() && m.statusBar.canSwap {
 		return func() tea.Msg {
-			if !m.userGlobal.rh.swapBottomCardRequest() {
+			if !m.userGlobal.ReqHandler.SwapBottomCardRequest() {
 				return nil
 			}
 			return nil
@@ -586,8 +587,8 @@ func (m *gsModel) swapBottomCard() tea.Cmd {
 }
 
 func (m *gsModel) swapCheck() {
-	if m.table.deckSize > 1 && slices.ContainsFunc(m.hand, func(c card) bool {
-		return c.num == m.statusBar.swapCard.num && c.charSuit == m.statusBar.swapCard.charSuit
+	if m.table.deckSize > 1 && slices.ContainsFunc(m.hand, func(c game.Card) bool {
+		return c.Num == m.statusBar.swapCard.Num && c.CharSuit == m.statusBar.swapCard.CharSuit
 	}) {
 		m.statusBar.canSwap = true
 		m.help.keys.showSwap = true

@@ -1,6 +1,7 @@
-package main
+package screens
 
 import (
+	"brisca.sh/server/requests"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,9 +11,9 @@ func newItemDelegate(keys *delegateKeyMap, lm *lobbyModel) list.DefaultDelegate 
 	d := list.NewDefaultDelegate()
 
 	d.UpdateFunc = func(msg tea.Msg, m *list.Model) tea.Cmd {
-		var selectedGame game
+		var selectedGame requests.Game
 
-		if i, ok := m.SelectedItem().(game); ok {
+		if i, ok := m.SelectedItem().(requests.Game); ok {
 			selectedGame = i
 		} else {
 			return nil
