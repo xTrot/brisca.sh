@@ -99,7 +99,7 @@ func NewLobby(userGlobal UserGlobal) lobbyModel {
 	delegate := newItemDelegate(delegateKeys, &lm)
 	gamesList := list.New(items, delegate, 0, 0)
 	gamesList.Styles.Title = titleStyle
-	gamesList.Title = "brisca.sh games:"
+	gamesList.Title = "!-brisca.sh-!  games:"
 	gamesList.SetStatusBarItemName("game", "games")
 	gamesList.Help = help.New()
 	gamesList.AdditionalFullHelpKeys = func() []key.Binding {

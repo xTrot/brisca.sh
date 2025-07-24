@@ -62,7 +62,7 @@ func NewRegisterScreen(session *ssh.Session, browser string) RegisterModel {
 	m.userGlobal = UserGlobal{
 		Session:     *session,
 		Renderer:    bubbletea.MakeRenderer(*session),
-		ReqHandler:  requests.NewHandler(),
+		ReqHandler:  requests.NewHandler(browser),
 		RenderEmoji: true,
 	}
 	m.isUp = m.userGlobal.ReqHandler.StatusRequest(requests.BROWSER)

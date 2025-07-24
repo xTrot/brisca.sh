@@ -30,6 +30,14 @@ type Handler struct {
 	RefreshBy     time.Time
 }
 
+func NewHandler(browser string) Handler {
+	jar, _ := cookiejar.New(nil)
+	return Handler{
+		jar:           jar,
+		BrowserServer: browser,
+	}
+}
+
 type RefreshByMsg time.Time
 
 func (m *Handler) RefreshSessionCheck(before time.Duration) tea.Msg {
@@ -51,13 +59,6 @@ func (m *Handler) RefreshSessionCheck(before time.Duration) tea.Msg {
 	rtn = m.refreshSessionRequest()
 
 	return rtn
-}
-
-func NewHandler() Handler {
-	jar, _ := cookiejar.New(nil)
-	return Handler{
-		jar: jar,
-	}
 }
 
 type Register struct {
