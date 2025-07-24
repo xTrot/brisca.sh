@@ -12,7 +12,13 @@ echo "====================================================================="
 echo ""
 echo "Compiling"
 echo "====================================================================="
+before=$(date +"%s")
 CGO_ENABLED=0 GOOS=linux go build && echo "Compiled success."
+file_timestamp=$(date -r "brisca.sh" +"%s")
+if [ $before -ge $file_timestamp ]; then 
+    echo "brisca.sh file is stale. Probably it didn't build." >&2
+    exit 1
+fi
 echo "====================================================================="
 
 echo ""

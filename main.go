@@ -1,4 +1,4 @@
-package briscash
+package main
 
 import "brisca.sh/server"
 
