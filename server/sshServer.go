@@ -31,6 +31,7 @@ var (
 	allowedKeyTypes = "ssh-rsa, "
 	Env             Environment
 	keyPath         = ".ssh/id_ed25519"
+	ShutdownMark    = false
 )
 
 type Environment struct {
@@ -61,6 +62,7 @@ func Start() {
 			bubbletea.Middleware(teaHandler),
 			activeterm.Middleware(), // Bubble Tea apps usually require a PTY.
 			AuthMiddleware(),
+			shutdownMarkMiddleware(),
 			logging.Middleware(),
 		),
 	)
@@ -99,6 +101,18 @@ func Start() {
 func skipThis() ssh.KeyboardInteractiveHandler {
 	return func(ctx ssh.Context, challenger gossh.KeyboardInteractiveChallenge) bool {
 		return true
+	}
+}
+
+func shutdownMarkMiddleware() wish.Middleware {
+	return func(next ssh.Handler) ssh.Handler {
+		if ShutdownMark {
+			return func(s ssh.Session) {
+				s.Exit(0)
+			}
+		} else {
+			return next
+		}
 	}
 }
 
