@@ -13,16 +13,34 @@ echo ""
 echo "Compiling"
 echo "====================================================================="
 before=$(date +"%s")
-CGO_ENABLED=0 GOOS=linux go build && echo "Compiled success."
+CGO_ENABLED=0 GOOS=linux go build -v
 file_timestamp=$(date -r "brisca.sh" +"%s")
 if [ $before -ge $file_timestamp ]; then 
     echo "brisca.sh file is stale. Probably it didn't build." >&2
     exit 1
 fi
+echo "Compiled success."
 echo "====================================================================="
 
 echo ""
 echo "Building docker image"
 echo "====================================================================="
 docker build -t brisca-twoserver .
+echo "====================================================================="
+
+echo ""
+echo "Checking local docker registry"
+echo "====================================================================="
+if ! (echo > /dev/tcp/localhost/5000) &>/dev/null; then
+    echo "No local docker registry found on localhost:5000" >&2
+    exit 1
+fi
+echo "====================================================================="
+
+echo ""
+echo "Pushing to local docker registry"
+echo "====================================================================="
+sleep 1
+docker tag brisca-twoserver:latest localhost:5000/brisca-twoserver:latest
+docker push localhost:5000/brisca-twoserver:latest
 echo "====================================================================="
