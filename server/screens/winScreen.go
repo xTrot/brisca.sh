@@ -137,6 +137,12 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	quit, cmd := HasRetired()
+	if cmd != nil {
+		return quit, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.userGlobal.SizeMsg = msg

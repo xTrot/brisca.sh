@@ -59,6 +59,11 @@ func (m joinGameModel) Init() tea.Cmd {
 func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
+	quit, cmd := HasRetired()
+	if cmd != nil {
+		return quit, cmd
+	}
+
 	form, cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f

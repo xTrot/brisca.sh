@@ -67,6 +67,11 @@ func (m makeGameModel) Init() tea.Cmd {
 func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
+	quit, cmd := HasRetired()
+	if cmd != nil {
+		return quit, cmd
+	}
+
 	form, cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
@@ -84,7 +89,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			SwapBottomCard: m.form.GetBool("swapBottomCard"),
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
 		game := m.userGlobal.ReqHandler.MakeGameRequest(gc)

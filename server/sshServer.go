@@ -31,7 +31,6 @@ var (
 	allowedKeyTypes = "ssh-rsa, "
 	Env             Environment
 	keyPath         = ".ssh/id_ed25519"
-	ShutdownMark    = false
 )
 
 type Environment struct {
@@ -58,14 +57,17 @@ func Start() {
 		wish.WithPublicKeyAuth(keyHandler),           // This should be optional but isn't.
 		wish.WithKeyboardInteractiveAuth(skipThis()), // If this isn't added the PubKeyAuth will require a key.
 		// This makes make PubKey Auth optional
+
 		wish.WithMiddleware(
 			bubbletea.Middleware(teaHandler),
 			activeterm.Middleware(), // Bubble Tea apps usually require a PTY.
 			AuthMiddleware(),
-			shutdownMarkMiddleware(),
 			logging.Middleware(),
 		),
+
+		//
 	)
+
 	if err != nil {
 		log.Error("Could not start server", "error", err)
 	}
@@ -79,6 +81,9 @@ func Start() {
 
 	log.Debug("Env:", "env", Env)
 
+	s.IdleTimeout = 15 * time.Minute
+	log.Info("Server", "s.IdleTimeout", s.IdleTimeout)
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	log.Info("Starting SSH server", "host", Env.Host, "port", Env.Port)
@@ -89,13 +94,30 @@ func Start() {
 		}
 	}()
 
-	<-done
+	sig := <-done
+	log.Info("Initiating graceful shutdown, Received signal: ", "sig", sig)
+	log.Info("Performing cleanup operations...")
+
+	screens.Retired = true
+	log.Info("Retired set to true.")
+
 	log.Info("Stopping SSH server")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
 		log.Error("Could not stop server", "error", err)
 	}
+
+	log.Info("Application shut down gracefully.")
+
+	if log.GetLevel() == log.DebugLevel {
+
+		log.Debug("Let me read the logs before shutting down.")
+		time.Sleep(5 * time.Second)
+
+	}
+
+	//
 }
 
 func skipThis() ssh.KeyboardInteractiveHandler {
@@ -104,37 +126,15 @@ func skipThis() ssh.KeyboardInteractiveHandler {
 	}
 }
 
-func shutdownMarkMiddleware() wish.Middleware {
-	return func(next ssh.Handler) ssh.Handler {
-		if ShutdownMark {
-			return func(s ssh.Session) {
-				s.Exit(0)
-			}
-		} else {
-			return next
-		}
-	}
-}
-
-// You can wire any Bubble Tea model up to the middleware with a function that
-// handles the incoming ssh.Session. Here we just grab the terminal info and
-// pass it to the new model. You can also return tea.ProgramOptions (such as
-// tea.WithAltScreen) on a session by session basis.
 func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 
-	// When running a Bubble Tea app over SSH, you shouldn't use the default
-	// lipgloss.NewStyle function.
-	// That function will use the color profile from the os.Stdin, which is the
-	// server, not the client.
-	// We provide a MakeRenderer function in the bubbletea middleware package,
-	// so you can easily get the correct renderer for the current session, and
-	// use it to create the styles.
-	// The recommended way to use these styles is to then pass them down to
-	// your Bubble Tea model.
-	// renderer := bubbletea.MakeRenderer(s)
+	quit, _ := screens.HasRetired()
+	if quit != nil {
+		return quit, []tea.ProgramOption{}
+	}
 
 	m := screens.NewRegisterScreen(&s, Env.BrowserServer)
-	return m, []tea.ProgramOption{tea.WithAltScreen()}
+	return m, []tea.ProgramOption{tea.WithAltScreen(), tea.WithoutSignalHandler()}
 }
 
 func keyHandler(ctx ssh.Context, key ssh.PublicKey) bool {

@@ -52,7 +52,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Sequence(
 		tea.ExitAltScreen,
 		tea.ClearScreen,
-		tea.Printf("%s\n\n%s\n%s\n",
+		tea.Printf("\n%s\n\n%s\n%s\n",
 			m.suitArt,
 			m.end,
 			SIGNATURE,

@@ -40,7 +40,7 @@ echo "====================================================================="
 echo ""
 echo "Pushing to local docker registry"
 echo "====================================================================="
-sleep 1
+sleep 5
 docker tag brisca-twoserver:latest localhost:5000/brisca-twoserver:latest
 docker push localhost:5000/brisca-twoserver:latest
 echo "====================================================================="
