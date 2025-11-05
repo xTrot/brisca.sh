@@ -208,8 +208,13 @@ func (m *Handler) RegisterRequest(register Register, server string) bool {
 		if cookie.Name != "userId" {
 			continue
 		}
-		m.RefreshBy = cookie.Expires
-		log.Debug("Cookies from body: ", "cookie", cookie, "m.refreshBy", m.RefreshBy)
+		log.Debug("Inspecting cookie expiration:", "cookie.RawExpires", cookie.RawExpires)
+		m.RefreshBy, err = time.Parse(time.RFC1123, cookie.RawExpires)
+		if err != nil {
+			log.Error("Error parsing time by RFC1123 failed.", "cookie.RawExpires", cookie.RawExpires)
+			log.Error("Error:", "err", err)
+			return false
+		}
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
