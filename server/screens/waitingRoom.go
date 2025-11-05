@@ -117,6 +117,10 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case updateWRMsg:
+		if msg.wr.TimedOut {
+			lm := NewLobby(m.userGlobal)
+			return lm, lm.Init()
+		}
 		m.wr = msg.wr
 		cmd = m.list.SetItems(m.wr.Items)
 		if m.wr.Teams {

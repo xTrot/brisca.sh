@@ -119,12 +119,13 @@ type Lease struct {
 }
 
 type WaitingRoom struct {
-	Players []Player `json:"players"`
-	Fill    string   `json:"fill"`
-	Started bool     `json:"started"`
-	Type    string   `json:"type"`
-	Items   []list.Item
-	Teams   bool
+	Players  []Player `json:"players"`
+	Fill     string   `json:"fill"`
+	Started  bool     `json:"started"`
+	TimedOut bool     `json:"timedOut"`
+	Type     string   `json:"type"`
+	Items    []list.Item
+	Teams    bool
 }
 
 func (wr WaitingRoom) String() string {
