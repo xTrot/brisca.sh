@@ -46,8 +46,8 @@ func newListKeyMap() *listKeyMap {
 			key.WithHelp("n", "new"),
 		),
 		joinGame: key.NewBinding(
-			key.WithKeys("j"),
-			key.WithHelp("j", "join game"),
+			key.WithKeys("p"),
+			key.WithHelp("p", "private game(join)"),
 		),
 		replayGame: key.NewBinding(
 			key.WithKeys("r"),
