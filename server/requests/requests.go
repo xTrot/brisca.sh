@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"strings"
 	"time"
 
@@ -24,17 +23,17 @@ const (
 )
 
 type Handler struct {
-	jar           *cookiejar.Jar
+	jar           http.CookieJar
 	GameServer    string
 	BrowserServer string
 	RefreshBy     time.Time
 }
 
-func NewHandler(browser string) Handler {
-	jar, _ := cookiejar.New(nil)
+func NewHandler(browser string, gameServer string) Handler {
 	return Handler{
-		jar:           jar,
+		jar:           &SharedCookieJar{CookieSlice: []*http.Cookie{}},
 		BrowserServer: browser,
+		GameServer:    gameServer,
 	}
 }
 
@@ -103,7 +102,8 @@ func (p Player) ReadyString() string {
 }
 
 type NewGame struct {
-	GameId string `json:"gameId"`
+	GameId     string `json:"gameId"`
+	GameServer string `json:"gameServer"`
 }
 
 type MySeat struct {
@@ -266,19 +266,18 @@ func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 	reader := bytes.NewReader(payload)
 	game := NewGame{}
 
-	requestURL := fmt.Sprintf("%s/lease", m.BrowserServer)
-	lease := Lease{}
+	requestURL := fmt.Sprintf("%s/config", m.GameServer)
 
 	client := &http.Client{Jar: m.jar}
 
-	res, err := client.Get(requestURL)
+	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
-		log.Error("error making http request: ", "err", err)
+		log.Error("error making http request: ", "err", err.Error())
 		return game
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", "res", res)
+		log.Error("While making http request:", "requestURL", requestURL, "res", res)
 		return game
 	}
 
@@ -291,45 +290,11 @@ func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 		return game
 	}
 
-	json.Unmarshal([]byte(body.String()), &lease)
-
-	exp, err := time.Parse(time.RFC3339, lease.ExpirationStr)
-	if err != nil {
-		log.Error("Error parsing time by RFC3339 failed.", "lease.ExpirationStr", lease.ExpirationStr, "err", err)
-	}
-	lease.Expiration = exp
-
-	tmpGameServer := "http://" + lease.Host + ":" + lease.Port
-
-	requestURL = fmt.Sprintf("%s/config", tmpGameServer)
-
-	client = &http.Client{Jar: m.jar}
-
-	res, err = client.Post(requestURL, "raw", reader)
-	if err != nil {
-		log.Error("error making http request: ", "err", err.Error())
-		return game
-	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", "res", res)
-		return game
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body = new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error("error making http request: ", "err", err)
-		return game
-	}
-
 	json.Unmarshal([]byte(body.String()), &game)
 
-	m.GameServer = tmpGameServer
+	m.GameServer = fmt.Sprintf("http://%s", game.GameServer)
 
-	log.Debug("Configured Server: ", "GameServer", m.GameServer, "now", time.Now(), "leaseExpires:", lease.Expiration)
+	log.Debug("Configured Server: ", "GameServer", m.GameServer, "now", time.Now())
 
 	return game
 }
@@ -362,12 +327,16 @@ func (m Handler) WaitingRoomRequest() WaitingRoom {
 		return WaitingRoom{}
 	}
 
+	log.Debug("m.WaitingRoomRequest()", "body", body)
+
 	waitingroom := WaitingRoom{}
 	json.Unmarshal([]byte(body.String()), &waitingroom)
 
 	for i := range waitingroom.Players {
 		items = append(items, waitingroom.Players[i])
 	}
+
+	log.Debug("m.WaitingRoomRequest()", "waitingroom", waitingroom, "waitingroom.Items", waitingroom.Items)
 
 	waitingroom.Items = items
 

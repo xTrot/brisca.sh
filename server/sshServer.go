@@ -40,7 +40,8 @@ type Environment struct {
 	Debug bool   `default:"false"`
 	Key   string `default:""`
 
-	BrowserServer string `default:"http://localhost:8000"`
+	BrowserServer string `default:"http://browser:9000"`
+	GameServer    string `default:"http://games:8000"`
 }
 
 func Start() {
@@ -133,7 +134,7 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		return quit, []tea.ProgramOption{}
 	}
 
-	m := screens.NewRegisterScreen(&s, Env.BrowserServer)
+	m := screens.NewRegisterScreen(&s, Env.BrowserServer, Env.GameServer)
 	return m, []tea.ProgramOption{tea.WithAltScreen(), tea.WithoutSignalHandler()}
 }
 

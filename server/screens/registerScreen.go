@@ -46,7 +46,7 @@ type RegisterModel struct {
 	registerStyle lipgloss.Style
 }
 
-func NewRegisterScreen(session *ssh.Session, browser string) RegisterModel {
+func NewRegisterScreen(session *ssh.Session, browser string, gameServer string) RegisterModel {
 
 	m := RegisterModel{
 		state:   textInputView,
@@ -62,7 +62,7 @@ func NewRegisterScreen(session *ssh.Session, browser string) RegisterModel {
 	m.userGlobal = UserGlobal{
 		Session:     *session,
 		Renderer:    bubbletea.MakeRenderer(*session),
-		ReqHandler:  requests.NewHandler(browser),
+		ReqHandler:  requests.NewHandler(browser, gameServer),
 		RenderEmoji: true,
 	}
 	m.isUp = m.userGlobal.ReqHandler.StatusRequest(requests.BROWSER)
