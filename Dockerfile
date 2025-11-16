@@ -1,6 +1,10 @@
 FROM alpine:latest
+RUN apk add --no-cache bash
+RUN apk add --no-cache openssh
 WORKDIR /app
 ADD brisca.sh /app/
+ADD healthcheck /app/
+ADD healthyloop /app/
 EXPOSE 22
 
 # Configurable env variables

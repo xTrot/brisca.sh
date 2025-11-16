@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Silence all output
+exec 1>/dev/null
+exec 2>&1
+
+# --- Configuration ---
+TARGET_HOST="localhost"
+# --- Configuration ---
+TARGET_PORT="22"
+
+while true; do
+
+  # Perform health check until successful
+  /app/healthcheck $TARGET_HOST $TARGET_PORT
+  if [[ "$?" == "0" ]]; then
+    break
+  fi
+
+done

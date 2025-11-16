@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Silence all output
+exec 1>/dev/null
+exec 2>&1
+
+# --- Configuration ---
+TARGET_HOST="$1"
+# --- Configuration ---
+TARGET_PORT="$2"
+# The string you want to "type" slowly.
+INPUT_STRING="              "
+# Delay between characters (in seconds).
+DELAY_PER_CHAR="0.15"
+
+(
+
+  # Set IFS to empty so 'read' doesn't skip leading/trailing whitespace
+  IFS=
+
+  # Use 'while read -r -n1 char' to read the input string one character at a time.
+  # The input string is provided via Here String (<<<).
+  while read -r -n1 char; do
+    # Print the character without a newline and flush it to the pipe
+    printf "%s" "$char"
+    # Pause for the specified delay
+    sleep "$DELAY_PER_CHAR"
+  done <<<"$INPUT_STRING"
+
+  printf '\x03'
+
+) | ssh -tt -o StrictHostKeychecking=no "$TARGET_HOST" -p $TARGET_PORT "echo"
