@@ -327,8 +327,6 @@ func (m Handler) WaitingRoomRequest() WaitingRoom {
 		return WaitingRoom{}
 	}
 
-	log.Debug("m.WaitingRoomRequest()", "body", body)
-
 	waitingroom := WaitingRoom{}
 	json.Unmarshal([]byte(body.String()), &waitingroom)
 
