@@ -67,7 +67,7 @@ func (m makeGameModel) Init() tea.Cmd {
 func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
-	quit, cmd := HasRetired()
+	quit, cmd := HasRetiredUser(m.userGlobal)
 	if cmd != nil {
 		return quit, cmd
 	}

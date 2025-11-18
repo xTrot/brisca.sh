@@ -138,7 +138,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	quit, cmd := HasRetired()
+	quit, cmd := HasRetiredUser(m.userGlobal)
 	if cmd != nil {
 		return quit, cmd
 	}

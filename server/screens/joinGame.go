@@ -59,7 +59,7 @@ func (m joinGameModel) Init() tea.Cmd {
 func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
-	quit, cmd := HasRetired()
+	quit, cmd := HasRetiredUser(m.userGlobal)
 	if cmd != nil {
 		return quit, cmd
 	}

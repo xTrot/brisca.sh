@@ -149,7 +149,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
-	quit, cmd := HasRetired()
+	quit, cmd := HasRetiredUser(m.userGlobal)
 	if cmd != nil {
 		return quit, cmd
 	}

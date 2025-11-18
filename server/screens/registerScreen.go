@@ -64,6 +64,8 @@ func NewRegisterScreen(session *ssh.Session, browser string, gameServer string) 
 		Renderer:    bubbletea.MakeRenderer(*session),
 		ReqHandler:  requests.NewHandler(browser, gameServer),
 		RenderEmoji: true,
+
+		LastRegisteredAction: time.Now(),
 	}
 	m.isUp = m.userGlobal.ReqHandler.StatusRequest(requests.BROWSER)
 
@@ -93,7 +95,7 @@ func (m RegisterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	quit, cmd := HasRetired()
+	quit, cmd := HasRetiredUser(m.userGlobal)
 	if cmd != nil {
 		return quit, cmd
 	}
