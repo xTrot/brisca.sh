@@ -155,6 +155,10 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.debounced {
+			quit, cmd = HasRetired()
+			if cmd != nil {
+				return quit, cmd
+			}
 			lm := NewLobby(m.userGlobal)
 			return lm, lm.Init()
 		}

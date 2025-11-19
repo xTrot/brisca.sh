@@ -345,6 +345,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case game.GameWonPayload:
 		m.actionCache.processed++
+		m.userGlobal.LastRegisteredAction = time.Now()
 		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
 		return ws, ws.Init()
 	case game.UndefinedActionPayload:

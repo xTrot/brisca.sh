@@ -26,13 +26,6 @@ func (m UserGlobal) LastWindowSizeReplay() tea.Cmd {
 	}
 }
 
-func (m UserGlobal) RegisterAction() tea.Cmd {
-	return func() tea.Msg {
-		m.LastRegisteredAction = time.Now()
-		return nil
-	}
-}
-
 func (m UserGlobal) IsIdle() bool {
 	return time.Now().After(
 		m.LastRegisteredAction.Add(time.Minute),
