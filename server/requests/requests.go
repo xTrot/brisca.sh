@@ -266,7 +266,7 @@ func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 	reader := bytes.NewReader(payload)
 	game := NewGame{}
 
-	requestURL := fmt.Sprintf("%s/config", m.GameServer)
+	requestURL := fmt.Sprintf("%s/makeGame", m.GameServer)
 
 	client := &http.Client{Jar: m.jar}
 
