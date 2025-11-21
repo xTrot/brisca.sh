@@ -1,15 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Silence all output
 exec 1>/dev/null
 exec 2>&1
 
 # --- Configuration ---
-TARGET_HOST="$1"
+TARGET_HOST="localhost"
+if [[ ! -z "$1" ]]; then
+    TARGET_HOST="$1"
+fi
+
 # --- Configuration ---
-TARGET_PORT="$2"
+TARGET_PORT="22"
+if [[ ! -z "$2" ]]; then
+    TARGET_HOST="$2"
+fi
+
 # The string you want to "type" slowly.
 INPUT_STRING="              "
+
 # Delay between characters (in seconds).
 DELAY_PER_CHAR="0.15"
 
@@ -30,3 +39,4 @@ DELAY_PER_CHAR="0.15"
   printf '\x03'
 
 ) | ssh -tt -o StrictHostKeychecking=no "$TARGET_HOST" -p $TARGET_PORT "echo"
+
