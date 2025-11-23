@@ -334,8 +334,6 @@ func (m Handler) WaitingRoomRequest() WaitingRoom {
 		items = append(items, waitingroom.Players[i])
 	}
 
-	log.Debug("m.WaitingRoomRequest()", "waitingroom", waitingroom, "waitingroom.Items", waitingroom.Items)
-
 	waitingroom.Items = items
 
 	if waitingroom.Fill[2] == '4' && waitingroom.Type != "solo" {
