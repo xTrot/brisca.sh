@@ -20,11 +20,6 @@ const (
 var (
 	docStyle = lipgloss.NewStyle().Margin(1, 2)
 
-	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
-			Padding(0, 1)
-
 	statusMessageStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
 				Render
@@ -98,7 +93,10 @@ func NewLobby(userGlobal UserGlobal) lobbyModel {
 
 	delegate := newItemDelegate(delegateKeys, &lm)
 	gamesList := list.New(items, delegate, 0, 0)
-	gamesList.Styles.Title = titleStyle
+	gamesList.Styles.Title = userGlobal.Renderer.NewStyle().
+		Foreground(lipgloss.Color("#FFFDF5")).
+		Background(lipgloss.Color("#25A065")).
+		Padding(0, 1)
 	gamesList.Title = "brisca.sh games:"
 	gamesList.SetStatusBarItemName("game", "games")
 	gamesList.Help = help.New()

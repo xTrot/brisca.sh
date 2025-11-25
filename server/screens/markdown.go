@@ -19,6 +19,10 @@ var (
 	exitStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
 			Height(1).Padding(0).Margin(0)
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#25A065")).
+			Padding(0, 1)
 
 	infoStyle = func() lipgloss.Style {
 		b := lipgloss.RoundedBorder()
