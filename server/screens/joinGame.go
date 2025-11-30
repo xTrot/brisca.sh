@@ -1,13 +1,15 @@
 package screens
 
 import (
-	"context"
+	"strings"
 	"time"
 
+	"brisca.sh/server/game"
 	"brisca.sh/server/requests"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/huh/spinner"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 )
 
@@ -17,6 +19,9 @@ type joinGameModel struct {
 	userGlobal UserGlobal
 	gameId     *string
 	replay     bool
+	waiting    bool
+	waitStyle  lipgloss.Style
+	spinner    spinner.Model
 }
 
 func newReplayGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
@@ -33,6 +38,18 @@ func newReplayGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
 		nextView:   nv,
 		userGlobal: userGlobal,
 		replay:     true,
+		waiting:    false,
+		waitStyle: userGlobal.Renderer.NewStyle().
+			AlignHorizontal(lipgloss.Center).
+			AlignVertical(lipgloss.Center),
+		spinner: spinner.New(
+			spinner.WithSpinner(spinner.Dot),
+			spinner.WithStyle(
+				userGlobal.Renderer.NewStyle().
+					AlignHorizontal(lipgloss.Center).
+					AlignVertical(lipgloss.Center),
+			),
+		),
 	}
 }
 
@@ -49,79 +66,159 @@ func newJoinGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
 		),
 		nextView:   nv,
 		userGlobal: userGlobal,
+		replay:     false,
+		waiting:    false,
+		waitStyle: userGlobal.Renderer.NewStyle().
+			AlignHorizontal(lipgloss.Center).
+			AlignVertical(lipgloss.Center),
+		spinner: spinner.New(
+			spinner.WithSpinner(spinner.Dot),
+			spinner.WithStyle(
+				userGlobal.Renderer.NewStyle().
+					AlignHorizontal(lipgloss.Center).
+					AlignVertical(lipgloss.Center),
+			),
+		),
 	}
 }
 
 func (m joinGameModel) Init() tea.Cmd {
-	return m.form.Init()
+	return tea.Batch(
+		m.form.Init(),
+		m.spinner.Tick,
+		m.userGlobal.LastWindowSizeReplay(),
+	)
 }
+
+type replayMsg []game.Action
+type joinedMsg bool
 
 func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
+	var cmds []tea.Cmd
 	quit, cmd := HasRetiredUser(m.userGlobal)
 	if cmd != nil {
 		return quit, cmd
+	}
+
+	if time.Now().After(m.userGlobal.ReqHandler.RefreshBy) {
+		log.Debug("Idle Disconnect")
+		return NewModel("Idle Disconnect")
 	}
 
 	form, cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
 	}
+	cmds = append(cmds, cmd)
 
-	if m.form.State == huh.StateCompleted {
+	if m.form.State == huh.StateCompleted && !m.waiting {
 		var gameId requests.GameId
-		gameId.GameId = *m.gameId
-
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
-		defer cancel()
-
-		err := spinner.New().
-			Type(spinner.Line).
-			Title("Finding your Game...").
-			Context(ctx).
-			Run()
-
-		if err != nil {
-			log.Fatal(err)
-		}
+		gameId.GameId = strings.TrimSpace(*m.gameId)
 
 		if m.replay {
-			replay := m.userGlobal.ReqHandler.ReplayRequest(gameId)
 
-			if replay != nil {
-				rgs := newReplayGSModel(m.userGlobal, replay)
-				return rgs, rgs.Init()
-			} else {
-				return m.nextView, m.nextView.Init()
+			cmd = func() tea.Msg {
+				log.Debug("Requesting replay:",
+					"m.userGlobal.Username", m.userGlobal.Username,
+					"gameId", gameId,
+				)
+				time.Sleep(time.Second)
+				rtn := replayMsg(
+					m.userGlobal.ReqHandler.ReplayRequest(gameId),
+				)
+				log.Debug("Result:", "rtn", rtn)
+				return rtn
 			}
+
+		} else {
+
+			cmd = func() tea.Msg {
+				log.Debug("Requesting joinPrivateGame:",
+					"m.userGlobal.Username", m.userGlobal.Username,
+					"gameId", gameId,
+				)
+				time.Sleep(time.Second)
+				rtn := joinedMsg(
+					m.userGlobal.ReqHandler.JoinPrivateGameRequest(
+						gameId,
+						m.userGlobal.Username,
+					),
+				)
+				log.Debug("Result:", "rtn", rtn)
+				return rtn
+			}
+
 		}
 
-		joined := m.userGlobal.ReqHandler.JoinPrivateGameRequest(gameId, m.userGlobal.Username)
+		cmds = append(cmds, cmd)
+		m.waiting = true
 
-		if joined {
+	}
+
+	switch msg := msg.(type) {
+
+	case replayMsg:
+		if msg != nil {
+			rgs := newReplayGSModel(m.userGlobal, msg)
+			return rgs, rgs.Init()
+		} else {
+			return m.nextView, m.nextView.Init()
+		}
+
+	case joinedMsg:
+		if msg {
 			wrm := newWaitingRoom(m.userGlobal)
-			wrm.list.Title = "GameID: " + gameId.GameId
+			wrm.list.Title = "GameID: " + *m.gameId
 			cmd = wrm.Init()
 			return wrm, cmd
 		} else {
 			return m.nextView, m.nextView.Init()
 		}
 
-	}
-
-	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl-c":
 			return m, tea.Quit
 		}
+
+	case tea.WindowSizeMsg:
+		m.userGlobal.SizeMsg = msg
+		m.waitStyle = m.waitStyle.
+			Height(msg.Height).
+			Width(msg.Width)
+
+	case spinner.TickMsg:
+		m.spinner, cmd = m.spinner.Update(msg)
+		cmds = append(cmds, cmd)
+
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
+
 }
 
 func (m joinGameModel) View() string {
-	return m.form.View()
+	if m.waiting {
+
+		var waitingFor string
+		if m.replay {
+			waitingFor = " Fetching replay"
+		} else {
+			waitingFor = " Joining game"
+		}
+
+		return m.waitStyle.Render(
+			lipgloss.JoinHorizontal(
+				lipgloss.Center,
+				m.spinner.View(),
+				waitingFor,
+			),
+		)
+
+	} else {
+		return m.form.View()
+	}
+
 }
