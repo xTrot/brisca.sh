@@ -19,7 +19,6 @@ import (
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/activeterm"
 	"github.com/charmbracelet/wish/bubbletea"
-	"github.com/charmbracelet/wish/logging"
 
 	"github.com/kelseyhightower/envconfig"
 )
@@ -63,7 +62,6 @@ func Start() {
 			bubbletea.Middleware(teaHandler),
 			activeterm.Middleware(), // Bubble Tea apps usually require a PTY.
 			AuthMiddleware(),
-			logging.Middleware(),
 		),
 
 		//
@@ -152,7 +150,9 @@ func AuthMiddleware() wish.Middleware {
 			keyUserGave := sess.PublicKey()
 
 			if keyUserGave == nil {
-				log.Info("AuthMiddleware: No key provided.")
+				if sess.User() != "root" {
+					log.Info("AuthMiddleware: No key provided.")
+				}
 				next(sess)
 				return
 			}

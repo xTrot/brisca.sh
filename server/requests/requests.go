@@ -203,6 +203,8 @@ func (m *Handler) RegisterRequest(register Register, server string) bool {
 		return false
 	}
 
+	log.Debug("Register success:", "register.Username", register.Username)
+
 	cookies := res.Cookies()
 	for i := range cookies {
 		cookie := cookies[i]
