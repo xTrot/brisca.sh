@@ -37,6 +37,67 @@ func NewHandler(browser string, gameServer string) Handler {
 	}
 }
 
+func (m Handler) getRequest(url string) (string, error) {
+
+	client := &http.Client{
+		Jar: m.jar,
+	}
+
+	res, err := client.Get(url)
+	if err != nil {
+		log.Error("Get:", "url", url, "err", err)
+		return "", err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("Get:", "url", url, "err", err)
+		return "", err
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error("Get:", "url", url, "err", err)
+		return "", err
+	}
+
+	return body.String(), nil
+
+}
+
+func (m Handler) postRequest(url string, payload []byte) (string, error) {
+	reader := bytes.NewReader(payload)
+
+	client := &http.Client{
+		Jar: m.jar,
+	}
+
+	res, err := client.Post(url, "raw", reader)
+	if err != nil {
+		log.Error("Get:", "url", url, "err", err)
+		return "", err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error("Get:", "url", url, "err", err)
+		return "", err
+	}
+
+	client.Jar.SetCookies(res.Request.URL, res.Cookies())
+
+	body := new(strings.Builder)
+	_, err = io.Copy(body, res.Body)
+	if err != nil {
+		log.Error("Get:", "url", url, "err", err)
+		return "", err
+	}
+
+	return body.String(), nil
+
+}
+
 type RefreshByMsg time.Time
 
 func (m *Handler) RefreshSessionCheck(before time.Duration) tea.Msg {
@@ -166,14 +227,9 @@ func (m Handler) StatusRequest(stype ServerType) bool {
 	}
 
 	requestURL := fmt.Sprintf("%s/status", url)
-	res, err := http.Get(requestURL)
+	_, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
-		return false
-	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
+		log.Error("StatusRequest:", "url", requestURL, "err", err)
 		return false
 	}
 
@@ -194,12 +250,12 @@ func (m *Handler) RegisterRequest(register Register, server string) bool {
 
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("RegisterRequest:", "url", requestURL, "err", err, "res", res)
 		return false
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
+		log.Error("RegisterRequest:", "url", requestURL, "err", err, "res", res)
 		return false
 	}
 
@@ -229,32 +285,14 @@ func (m Handler) LobbyRequest() []list.Item {
 	requestURL := fmt.Sprintf("%s/lobby", m.BrowserServer)
 	items := []list.Item{}
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Get(requestURL)
+	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
-		return items
-	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
-		return items
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("Lobby Request:", "url", requestURL, "err", err, "body", body)
 		return items
 	}
 
 	games := GamesList{}
-	json.Unmarshal([]byte(body.String()), &games)
+	json.Unmarshal([]byte(body), &games)
 
 	for i := range games.Games {
 		items = append(items, games.Games[i])
@@ -265,34 +303,17 @@ func (m Handler) LobbyRequest() []list.Item {
 
 func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 	payload, _ := json.Marshal(gc)
-	reader := bytes.NewReader(payload)
 	game := NewGame{}
 
 	requestURL := fmt.Sprintf("%s/makeGame", m.GameServer)
 
-	client := &http.Client{Jar: m.jar}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("error making http request: ", "err", err.Error())
+		log.Error("MakeGameRequest:", "url", requestURL, "err", err, "body", body)
 		return game
 	}
 
-	if res.StatusCode != http.StatusOK {
-		log.Error("While making http request:", "requestURL", requestURL, "res", res)
-		return game
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error("error making http request: ", "err", err)
-		return game
-	}
-
-	json.Unmarshal([]byte(body.String()), &game)
+	json.Unmarshal([]byte(body), &game)
 
 	return game
 }
@@ -301,32 +322,14 @@ func (m Handler) WaitingRoomRequest() WaitingRoom {
 	requestURL := fmt.Sprintf("%s/waitingroom", m.GameServer)
 	items := []list.Item{}
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Get(requestURL)
+	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
-		return WaitingRoom{}
-	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
-		return WaitingRoom{}
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		log.Error("WaitingRoom:", "url", requestURL, "err", err, "body", body)
 		return WaitingRoom{}
 	}
 
 	waitingroom := WaitingRoom{}
-	json.Unmarshal([]byte(body.String()), &waitingroom)
+	json.Unmarshal([]byte(body), &waitingroom)
 
 	for i := range waitingroom.Players {
 		items = append(items, waitingroom.Players[i])
@@ -342,69 +345,37 @@ func (m Handler) WaitingRoomRequest() WaitingRoom {
 }
 
 func (m Handler) LeaveGameRequest() bool {
-	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/leavegame", m.GameServer)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("LeaveGameRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
-		return false
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
 }
 
 func (m Handler) ReadyRequest() bool {
-	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/ready", m.GameServer)
 
-	client := &http.Client{Jar: m.jar}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("ReadyRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
-		return false
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
 }
 
 func (m Handler) StartGameRequest() bool {
-	reader := bytes.NewBufferString("")
 	requestURL := fmt.Sprintf("%s/startgame", m.GameServer)
 
-	client := &http.Client{Jar: m.jar}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("StartGameRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
-		return false
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
 }
@@ -412,7 +383,6 @@ func (m Handler) StartGameRequest() bool {
 func (m *Handler) JoinGameRequest(gameId GameId, server, username string) NewGame {
 	game := NewGame{}
 	payload, _ := json.Marshal(gameId)
-	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("http://%s/joingame", server)
 
 	tmpGameServer := "http://" + server
@@ -427,22 +397,11 @@ func (m *Handler) JoinGameRequest(gameId GameId, server, username string) NewGam
 		return game
 	}
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
+		log.Error("StartGameRequest:", "url", requestURL, "err", err, "body", body)
 		return game
 	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
-		return game
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	game.GameId = gameId.GameId
 	game.GameServer = server
@@ -454,33 +413,15 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame
 	gameRtn := NewGame{}
 	requestURL := fmt.Sprintf("%s/joinprivategame?gameId=%s", m.BrowserServer, gameId.GameId)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Get(requestURL)
+	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
+		log.Error("JoinPrivateGameRequest:", "url", requestURL, "err", err, "body", body)
 		return gameRtn
 	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
-		return gameRtn
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	var game Game
 
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error("error making http request: ", "err", err)
-		return gameRtn
-	}
-
-	json.Unmarshal([]byte(body.String()), &game)
+	json.Unmarshal([]byte(body), &game)
 
 	tmpGameServer := "http://" + game.Server
 
@@ -490,30 +431,18 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame
 
 	success := m.RegisterRequest(reg, tmpGameServer)
 	if !success {
-		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
+		log.Error("Error registering to gameServer:", "tmpGameServer", tmpGameServer)
 		return gameRtn
 	}
 
 	payload, _ := json.Marshal(game)
-	reader := bytes.NewReader(payload)
 	requestURL = fmt.Sprintf("%s/joingame", tmpGameServer)
 
-	client = &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err = client.Post(requestURL, "raw", reader)
+	body, err = m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
+		log.Error("JoinPrivateGameRequest:", "url", requestURL, "err", err, "body", body)
 		return gameRtn
 	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
-		return gameRtn
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	gameRtn.GameId = gameId.GameId
 	gameRtn.GameServer = game.Server
@@ -525,32 +454,14 @@ func (m Handler) HandRequest() []game.Card {
 	requestURL := fmt.Sprintf("%s/hand", m.GameServer)
 	var hand []game.Card
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Get(requestURL)
+	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
-		return hand
-	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("Request:", "url", requestURL, "status", res.StatusCode)
-		return hand
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		log.Error("HandRequest:", "url", requestURL, "err", err, "body", body)
 		return hand
 	}
 
 	var handStrings []string
-	json.Unmarshal([]byte(body.String()), &handStrings)
+	json.Unmarshal([]byte(body), &handStrings)
 
 	hand = handFromStrings(handStrings)
 
@@ -567,25 +478,13 @@ func handFromStrings(handStrings []string) []game.Card {
 
 func (m Handler) PlayCardRequest(index int) bool {
 	payload, _ := json.Marshal(handIndex{Index: index})
-	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("%s/playcard", m.GameServer)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("PlayCardRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
-
-	if res.StatusCode != http.StatusOK {
-		// log.Errorf("bad status making http request: %d\n", res.StatusCode)
-		return false
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
 }
@@ -594,31 +493,13 @@ func (m Handler) ActionsRequest() []game.Action {
 	var actions []game.Action
 	requestURL := fmt.Sprintf("%s/actions", m.GameServer)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Get(requestURL)
+	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("error making http request: ", err)
+		log.Error("ActionsRequest:", "url", requestURL, "err", err, "body", body)
 		return actions
 	}
 
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", res.StatusCode)
-		return actions
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
-		return actions
-	}
-
-	json.Unmarshal([]byte(body.String()), &actions)
+	json.Unmarshal([]byte(body), &actions)
 
 	return actions
 }
@@ -627,83 +508,42 @@ func (m Handler) MySeatRequest() MySeat {
 	var seat MySeat
 	requestURL := fmt.Sprintf("%s/seat", m.GameServer)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Get(requestURL)
+	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("error making http request: ", err)
+		log.Error("MySeatRequest:", "url", requestURL, "err", err, "body", body)
 		return seat
 	}
 
-	if res.StatusCode != http.StatusOK {
-		return seat
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
-		return seat
-	}
-
-	json.Unmarshal([]byte(body.String()), &seat)
+	json.Unmarshal([]byte(body), &seat)
 
 	return seat
 }
 
 func (m Handler) ChangeTeamRequest(spectator bool) bool {
-	reader := bytes.NewReader([]byte{})
+	payload := []byte("")
 	if spectator {
-		reader = bytes.NewReader([]byte("{team:S}")) // Not worth implementing the JSON.
+		payload = []byte("{team:S}") // Not worth implementing the JSON.
 	}
 
 	requestURL := fmt.Sprintf("%s/changeteam", m.GameServer)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("error making http request: %s\n", err)
+		log.Error("ChangeTeamRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
-
-	if res.StatusCode != http.StatusOK {
-		// log.Errorf("bad status making http request: %d\n", res.StatusCode)
-		return false
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
 }
 
 func (m Handler) SwapBottomCardRequest() bool {
-	reader := bytes.NewReader([]byte{})
-
 	requestURL := fmt.Sprintf("%s/swapBottomCard", m.GameServer)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Post(requestURL, "raw", reader)
+	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
-		log.Error("error making http request:", "err", err)
+		log.Error("SwapBottomCardRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
-
-	if res.StatusCode != http.StatusOK {
-		// log.Errorf("bad status making http request:", "res.StatusCode", res.StatusCode)
-		return false
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
 	return true
 }
@@ -711,32 +551,14 @@ func (m Handler) SwapBottomCardRequest() bool {
 func (m Handler) ReplayRequest(gameId GameId) []game.Action {
 	requestURL := fmt.Sprintf("%s/replay?gameId=%s", m.BrowserServer, gameId.GameId)
 
-	client := &http.Client{
-		Jar: m.jar,
-	}
-
-	res, err := client.Get(requestURL)
+	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("error making http request: ", err)
-		return nil
-	}
-
-	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", res.StatusCode)
-		return nil
-	}
-
-	client.Jar.SetCookies(res.Request.URL, res.Cookies())
-
-	body := new(strings.Builder)
-	_, err = io.Copy(body, res.Body)
-	if err != nil {
-		log.Error(fmt.Sprintf("error making http request: %s\n", err.Error()))
+		log.Error("ReplayRequest:", "url", requestURL, "err", err, "body", body)
 		return nil
 	}
 
 	var actions []game.Action
-	json.Unmarshal([]byte(body.String()), &actions)
+	json.Unmarshal([]byte(body), &actions)
 
 	return actions
 }
@@ -751,12 +573,12 @@ func (m *Handler) refreshSessionRequest() tea.Msg {
 
 	res, err := client.Get(requestURL)
 	if err != nil {
-		log.Error("error making http request: ", err)
+		log.Error("refreshSessionRequest:", "url", requestURL, "err", err, "res", res)
 		return nil
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: ", res.StatusCode)
+		log.Error("refreshSessionRequest:", "url", requestURL, "err", err, "res", res)
 		return nil
 	}
 
