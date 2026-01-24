@@ -24,20 +24,45 @@ const (
 
 type Handler struct {
 	jar           http.CookieJar
-	GameServer    string
-	BrowserServer string
+	gameServer    string
+	browserServer string
 	RefreshBy     time.Time
 }
 
 func NewHandler(browser string, gameServer string) Handler {
 	return Handler{
 		jar:           &SharedCookieJar{CookieSlice: []*http.Cookie{}},
-		BrowserServer: browser,
-		GameServer:    gameServer,
+		browserServer: browser,
+		gameServer:    gameServer,
 	}
 }
 
-func (m Handler) getRequest(url string) (string, error) {
+func (m Handler) GameServer() string {
+	return m.gameServer
+}
+
+func (m *Handler) SetGameServer(hostAndPort string) {
+	m.gameServer = fmt.Sprintf("http://%s", hostAndPort)
+}
+
+func (m Handler) BroserServer() string {
+	return m.browserServer
+}
+
+func (m *Handler) SetBrowserServer(hostAndPort string) {
+	m.browserServer = fmt.Sprintf("http://%s", hostAndPort)
+}
+
+type HttpStatusErr struct {
+	err error
+	res *http.Response
+}
+
+func (m HttpStatusErr) Error() string {
+	return m.err.Error()
+}
+
+func (m *Handler) getRequest(url string) (string, error) {
 
 	client := &http.Client{
 		Jar: m.jar,
@@ -45,13 +70,15 @@ func (m Handler) getRequest(url string) (string, error) {
 
 	res, err := client.Get(url)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err)
+		log.Error("Get:", "url", url, "err", err, "res", res)
 		return "", err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("Get:", "url", url, "err", err)
-		return "", err
+		return "", HttpStatusErr{
+			err: fmt.Errorf("Bad Status: %d", res.StatusCode),
+			res: res,
+		}
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
@@ -59,7 +86,7 @@ func (m Handler) getRequest(url string) (string, error) {
 	body := new(strings.Builder)
 	_, err = io.Copy(body, res.Body)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err)
+		log.Error("Get:", "url", url, "err", err, "res", res, "body", body.String())
 		return "", err
 	}
 
@@ -67,7 +94,7 @@ func (m Handler) getRequest(url string) (string, error) {
 
 }
 
-func (m Handler) postRequest(url string, payload []byte) (string, error) {
+func (m *Handler) postRequest(url string, payload []byte) (string, error) {
 	reader := bytes.NewReader(payload)
 
 	client := &http.Client{
@@ -76,13 +103,15 @@ func (m Handler) postRequest(url string, payload []byte) (string, error) {
 
 	res, err := client.Post(url, "raw", reader)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err)
+		log.Error("Get:", "url", url, "err", err, "res", res)
 		return "", err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("Get:", "url", url, "err", err)
-		return "", err
+		return "", HttpStatusErr{
+			err: fmt.Errorf("Bad Status: %d", res.StatusCode),
+			res: res,
+		}
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
@@ -90,7 +119,7 @@ func (m Handler) postRequest(url string, payload []byte) (string, error) {
 	body := new(strings.Builder)
 	_, err = io.Copy(body, res.Body)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err)
+		log.Error("Get:", "url", url, "err", err, "res", res, "body", body.String())
 		return "", err
 	}
 
@@ -221,9 +250,9 @@ type handIndex struct {
 func (m Handler) StatusRequest(stype ServerType) bool {
 	var url string
 	if stype == BROWSER {
-		url = m.BrowserServer
+		url = m.browserServer
 	} else {
-		url = m.GameServer
+		url = m.gameServer
 	}
 
 	requestURL := fmt.Sprintf("%s/status", url)
@@ -282,7 +311,7 @@ func (m *Handler) RegisterRequest(register Register, server string) bool {
 }
 
 func (m Handler) LobbyRequest() []list.Item {
-	requestURL := fmt.Sprintf("%s/lobby", m.BrowserServer)
+	requestURL := fmt.Sprintf("%s/lobby", m.browserServer)
 	items := []list.Item{}
 
 	body, err := m.getRequest(requestURL)
@@ -305,7 +334,7 @@ func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 	payload, _ := json.Marshal(gc)
 	game := NewGame{}
 
-	requestURL := fmt.Sprintf("%s/makeGame", m.GameServer)
+	requestURL := fmt.Sprintf("%s/makeGame", m.gameServer)
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
@@ -319,7 +348,7 @@ func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 }
 
 func (m Handler) WaitingRoomRequest() WaitingRoom {
-	requestURL := fmt.Sprintf("%s/waitingroom", m.GameServer)
+	requestURL := fmt.Sprintf("%s/waitingroom", m.gameServer)
 	items := []list.Item{}
 
 	body, err := m.getRequest(requestURL)
@@ -345,10 +374,17 @@ func (m Handler) WaitingRoomRequest() WaitingRoom {
 }
 
 func (m Handler) LeaveGameRequest() bool {
-	requestURL := fmt.Sprintf("%s/leavegame", m.GameServer)
+	requestURL := fmt.Sprintf("%s/leavegame", m.gameServer)
 
 	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
+		// statusErr, ok := err.(HttpStatusErr)
+		// if ok {
+		// 	log.Debug("HttpStatusErr type assertion ran.")
+		// 	if statusErr.res.StatusCode >= 400 && 500 > statusErr.res.StatusCode {
+		// 		return false
+		// 	}
+		// }
 		log.Error("LeaveGameRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
@@ -357,7 +393,7 @@ func (m Handler) LeaveGameRequest() bool {
 }
 
 func (m Handler) ReadyRequest() bool {
-	requestURL := fmt.Sprintf("%s/ready", m.GameServer)
+	requestURL := fmt.Sprintf("%s/ready", m.gameServer)
 
 	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
@@ -369,7 +405,7 @@ func (m Handler) ReadyRequest() bool {
 }
 
 func (m Handler) StartGameRequest() bool {
-	requestURL := fmt.Sprintf("%s/startgame", m.GameServer)
+	requestURL := fmt.Sprintf("%s/startgame", m.gameServer)
 
 	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
@@ -399,7 +435,7 @@ func (m *Handler) JoinGameRequest(gameId GameId, server, username string) NewGam
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("StartGameRequest:", "url", requestURL, "err", err, "body", body)
+		log.Error("JoinGameRequest:", "url", requestURL, "err", err, "body", body)
 		return game
 	}
 
@@ -411,7 +447,7 @@ func (m *Handler) JoinGameRequest(gameId GameId, server, username string) NewGam
 
 func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame {
 	gameRtn := NewGame{}
-	requestURL := fmt.Sprintf("%s/joinprivategame?gameId=%s", m.BrowserServer, gameId.GameId)
+	requestURL := fmt.Sprintf("%s/joinprivategame?gameId=%s", m.browserServer, gameId.GameId)
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
@@ -451,7 +487,7 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame
 }
 
 func (m Handler) HandRequest() []game.Card {
-	requestURL := fmt.Sprintf("%s/hand", m.GameServer)
+	requestURL := fmt.Sprintf("%s/hand", m.gameServer)
 	var hand []game.Card
 
 	body, err := m.getRequest(requestURL)
@@ -478,7 +514,7 @@ func handFromStrings(handStrings []string) []game.Card {
 
 func (m Handler) PlayCardRequest(index int) bool {
 	payload, _ := json.Marshal(handIndex{Index: index})
-	requestURL := fmt.Sprintf("%s/playcard", m.GameServer)
+	requestURL := fmt.Sprintf("%s/playcard", m.gameServer)
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
@@ -491,7 +527,7 @@ func (m Handler) PlayCardRequest(index int) bool {
 
 func (m Handler) ActionsRequest() []game.Action {
 	var actions []game.Action
-	requestURL := fmt.Sprintf("%s/actions", m.GameServer)
+	requestURL := fmt.Sprintf("%s/actions", m.gameServer)
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
@@ -506,7 +542,7 @@ func (m Handler) ActionsRequest() []game.Action {
 
 func (m Handler) MySeatRequest() MySeat {
 	var seat MySeat
-	requestURL := fmt.Sprintf("%s/seat", m.GameServer)
+	requestURL := fmt.Sprintf("%s/seat", m.gameServer)
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
@@ -525,7 +561,7 @@ func (m Handler) ChangeTeamRequest(spectator bool) bool {
 		payload = []byte("{team:S}") // Not worth implementing the JSON.
 	}
 
-	requestURL := fmt.Sprintf("%s/changeteam", m.GameServer)
+	requestURL := fmt.Sprintf("%s/changeteam", m.gameServer)
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
@@ -537,7 +573,7 @@ func (m Handler) ChangeTeamRequest(spectator bool) bool {
 }
 
 func (m Handler) SwapBottomCardRequest() bool {
-	requestURL := fmt.Sprintf("%s/swapBottomCard", m.GameServer)
+	requestURL := fmt.Sprintf("%s/swapBottomCard", m.gameServer)
 
 	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
@@ -549,7 +585,7 @@ func (m Handler) SwapBottomCardRequest() bool {
 }
 
 func (m Handler) ReplayRequest(gameId GameId) []game.Action {
-	requestURL := fmt.Sprintf("%s/replay?gameId=%s", m.BrowserServer, gameId.GameId)
+	requestURL := fmt.Sprintf("%s/replay?gameId=%s", m.browserServer, gameId.GameId)
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
@@ -565,7 +601,7 @@ func (m Handler) ReplayRequest(gameId GameId) []game.Action {
 
 func (m *Handler) refreshSessionRequest() tea.Msg {
 	var msg RefreshByMsg
-	requestURL := fmt.Sprintf("%s/refresh", m.BrowserServer)
+	requestURL := fmt.Sprintf("%s/refresh", m.browserServer)
 
 	client := &http.Client{
 		Jar: m.jar,

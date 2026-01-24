@@ -1,7 +1,6 @@
 package screens
 
 import (
-	"fmt"
 	"time"
 
 	"brisca.sh/server/requests"
@@ -293,7 +292,7 @@ func (m *lobbyModel) joinGame(game requests.Game) tea.Cmd {
 		emptyGame := requests.NewGame{}
 		newGame := m.userGlobal.ReqHandler.JoinGameRequest(gameId, game.Server, m.userGlobal.Username)
 		if emptyGame != newGame {
-			m.userGlobal.ReqHandler.GameServer = fmt.Sprintf("http://%s", newGame.GameServer)
+			m.userGlobal.ReqHandler.SetGameServer(newGame.GameServer)
 			return joinGameMsg{
 				gameId:     gameId,
 				userGlobal: m.userGlobal,

@@ -1,7 +1,6 @@
 package screens
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -172,7 +171,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		emptyGame := requests.NewGame{}
 		newGame := requests.NewGame(msg)
 		if emptyGame != newGame {
-			m.userGlobal.ReqHandler.GameServer = fmt.Sprintf("http://%s", newGame.GameServer)
+			m.userGlobal.ReqHandler.SetGameServer(newGame.GameServer)
 			wrm := newWaitingRoom(m.userGlobal)
 			wrm.list.Title = "GameID: " + *m.gameId
 			cmd = wrm.Init()
