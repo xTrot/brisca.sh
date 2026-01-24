@@ -294,10 +294,6 @@ func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 
 	json.Unmarshal([]byte(body.String()), &game)
 
-	m.GameServer = fmt.Sprintf("http://%s", game.GameServer)
-
-	log.Debug("Configured Server: ", "GameServer", m.GameServer, "now", time.Now())
-
 	return game
 }
 
@@ -413,7 +409,8 @@ func (m Handler) StartGameRequest() bool {
 	return true
 }
 
-func (m *Handler) JoinGameRequest(gameId GameId, server, username string) bool {
+func (m *Handler) JoinGameRequest(gameId GameId, server, username string) NewGame {
+	game := NewGame{}
 	payload, _ := json.Marshal(gameId)
 	reader := bytes.NewReader(payload)
 	requestURL := fmt.Sprintf("http://%s/joingame", server)
@@ -427,7 +424,7 @@ func (m *Handler) JoinGameRequest(gameId GameId, server, username string) bool {
 	success := m.RegisterRequest(reg, tmpGameServer)
 	if !success {
 		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
-		return false
+		return game
 	}
 
 	client := &http.Client{
@@ -437,22 +434,24 @@ func (m *Handler) JoinGameRequest(gameId GameId, server, username string) bool {
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
 		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
-		return false
+		return game
 	}
 
 	if res.StatusCode != http.StatusOK {
 		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
-		return false
+		return game
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
-	m.GameServer = tmpGameServer
+	game.GameId = gameId.GameId
+	game.GameServer = server
 
-	return true
+	return game
 }
 
-func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) bool {
+func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame {
+	gameRtn := NewGame{}
 	requestURL := fmt.Sprintf("%s/joinprivategame?gameId=%s", m.BrowserServer, gameId.GameId)
 
 	client := &http.Client{
@@ -462,12 +461,12 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) bool {
 	res, err := client.Get(requestURL)
 	if err != nil {
 		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
-		return false
+		return gameRtn
 	}
 
 	if res.StatusCode != http.StatusOK {
 		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
-		return false
+		return gameRtn
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
@@ -478,7 +477,7 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) bool {
 	_, err = io.Copy(body, res.Body)
 	if err != nil {
 		log.Error("error making http request: ", "err", err)
-		return false
+		return gameRtn
 	}
 
 	json.Unmarshal([]byte(body.String()), &game)
@@ -492,7 +491,7 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) bool {
 	success := m.RegisterRequest(reg, tmpGameServer)
 	if !success {
 		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
-		return false
+		return gameRtn
 	}
 
 	payload, _ := json.Marshal(game)
@@ -506,19 +505,20 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) bool {
 	res, err = client.Post(requestURL, "raw", reader)
 	if err != nil {
 		log.Error("error making http request: ", "requestURL", requestURL, "err", err)
-		return false
+		return gameRtn
 	}
 
 	if res.StatusCode != http.StatusOK {
 		log.Error("bad status making http request: ", "requestURL", requestURL, "StatusCode", res.StatusCode)
-		return false
+		return gameRtn
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())
 
-	m.GameServer = tmpGameServer
+	gameRtn.GameId = gameId.GameId
+	gameRtn.GameServer = game.Server
 
-	return true
+	return gameRtn
 }
 
 func (m Handler) HandRequest() []game.Card {
@@ -536,7 +536,7 @@ func (m Handler) HandRequest() []game.Card {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("bad status making http request: %d\n", res.StatusCode)
+		log.Error("Request:", "url", requestURL, "status", res.StatusCode)
 		return hand
 	}
 

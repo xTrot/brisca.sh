@@ -13,10 +13,10 @@ var (
 
 type Model struct {
 	suitArt string
-	end     string
+	reason  string
 }
 
-func NewModel(end string) (tea.Model, tea.Cmd) {
+func NewModel(reason string) (tea.Model, tea.Cmd) {
 
 	pick := rand.Intn(4)
 	var pickedSuit string
@@ -41,7 +41,7 @@ func NewModel(end string) (tea.Model, tea.Cmd) {
 
 	rtn := Model{
 		suitArt: pickedSuit,
-		end:     end,
+		reason:  reason,
 	}
 
 	return rtn, rtn.Init()
@@ -54,7 +54,7 @@ func (m Model) Init() tea.Cmd {
 		tea.ClearScreen,
 		tea.Printf("\n%s\n\n%s\n%s\n",
 			m.suitArt,
-			m.end,
+			m.reason,
 			SIGNATURE,
 		),
 		tea.Quit,

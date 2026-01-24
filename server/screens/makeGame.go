@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"fmt"
 	"time"
 
 	"brisca.sh/server/embedded"
@@ -130,6 +131,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		log.Debug("Making game successful", "game", msg)
+		m.userGlobal.ReqHandler.GameServer = fmt.Sprintf("http://%s", msg.GameServer)
 		wrm := newWaitingRoom(m.userGlobal)
 		wrm.list.Title = "GameID: " + msg.GameId
 		return wrm, wrm.Init()

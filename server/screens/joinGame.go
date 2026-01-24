@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -91,7 +92,7 @@ func (m joinGameModel) Init() tea.Cmd {
 }
 
 type replayMsg []game.Action
-type joinedMsg bool
+type joinedMsg requests.NewGame
 
 func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
@@ -168,7 +169,10 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case joinedMsg:
-		if msg {
+		emptyGame := requests.NewGame{}
+		newGame := requests.NewGame(msg)
+		if emptyGame != newGame {
+			m.userGlobal.ReqHandler.GameServer = fmt.Sprintf("http://%s", newGame.GameServer)
 			wrm := newWaitingRoom(m.userGlobal)
 			wrm.list.Title = "GameID: " + *m.gameId
 			cmd = wrm.Init()
