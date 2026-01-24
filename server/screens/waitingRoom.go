@@ -111,6 +111,16 @@ func (m waitingRoomModel) Init() tea.Cmd {
 	return tea.Batch(m.every(wrUpdateInterval), m.userGlobal.LastWindowSizeReplay())
 }
 
+func (m waitingRoomModel) startGameScreen() (tea.Model, tea.Cmd) {
+	gs := newGSModel(m.userGlobal)
+	return Transition(
+		m.userGlobal,
+		gs,
+		time.Millisecond*500,
+		"Starting Game",
+	)
+}
+
 func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
@@ -128,14 +138,13 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.every(wrUpdateInterval))
+
 		if msg.wr.Started {
-			gs := newGSModel(m.userGlobal)
-			return gs, gs.Init()
+			return m.startGameScreen()
 		}
 
 	case startGameMsg:
-		gs := newGSModel(m.userGlobal)
-		return gs, gs.Init()
+		return m.startGameScreen()
 
 	case leaveGameMsg:
 		lobby := NewLobby(m.userGlobal)
