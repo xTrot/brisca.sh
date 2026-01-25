@@ -17,13 +17,7 @@ const (
 	testDelay    = 1 //seconds
 )
 
-var (
-	docStyle = lipgloss.NewStyle().Margin(1, 2)
-
-	statusMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
-				Render
-)
+var ()
 
 type listKeyMap struct {
 	insertItem key.Binding
@@ -68,16 +62,19 @@ type lobbyModel struct {
 	keys         *listKeyMap
 	delegateKeys *delegateKeyMap
 	lastUpdate   time.Time
-	userGlobal   UserGlobal
+	usc          UserScreenContext
 	fullHelp     MarkdownModel
 	showFH       bool
+
+	docStyle           lipgloss.Style
+	statusMessageStyle lipgloss.Style
 }
 
 type itemsMsg struct {
 	items []list.Item
 }
 
-func NewLobby(userGlobal UserGlobal) lobbyModel {
+func NewLobby(usc UserScreenContext) lobbyModel {
 	var (
 		delegateKeys = newDelegateKeyMap()
 		listKeys     = newListKeyMap()
@@ -93,7 +90,7 @@ func NewLobby(userGlobal UserGlobal) lobbyModel {
 
 	delegate := newItemDelegate(delegateKeys, &lm)
 	gamesList := list.New(items, delegate, 0, 0)
-	gamesList.Styles.Title = userGlobal.Renderer.NewStyle().
+	gamesList.Styles.Title = usc.Renderer().NewStyle().
 		Foreground(lipgloss.Color("#FFFDF5")).
 		Background(lipgloss.Color("#25A065")).
 		Padding(0, 1)
@@ -124,9 +121,12 @@ func NewLobby(userGlobal UserGlobal) lobbyModel {
 	lm.keys = listKeys
 	lm.delegateKeys = delegateKeys
 	lm.lastUpdate = time.Now()
-	lm.userGlobal = userGlobal
+	lm.usc = usc
 	lm.fullHelp = NewFullHelpModel()
 
+	lm.docStyle = lm.usc.Renderer().NewStyle().Margin(1, 2)
+	lm.statusMessageStyle = lm.usc.Renderer().NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"})
 	return lm
 }
 
@@ -140,19 +140,19 @@ func doTick() tea.Cmd {
 
 func (lm lobbyModel) Init() tea.Cmd {
 	_, cmd := lm.updateIfStale(0)
-	return tea.Batch(cmd, doTick(), lm.userGlobal.LastWindowSizeReplay(), lm.list.StartSpinner())
+	return tea.Batch(cmd, doTick(), lm.usc.LastWindowSizeReplay(), lm.list.StartSpinner())
 }
 
 func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
-	quit, cmd := HasRetiredUser(m.userGlobal)
+	quit, cmd := HasRetiredUser(&m.usc)
 	if cmd != nil {
 		return quit, cmd
 	}
 
-	if time.Now().After(m.userGlobal.ReqHandler.RefreshBy) {
+	if time.Now().After(m.usc.ReqHandler().RefreshBy) {
 		log.Debug("Idle Disconnect")
 		return NewModel("Idle Disconnect")
 	}
@@ -160,7 +160,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case joinGameMsg:
-		wrm := newWaitingRoom(msg.userGlobal)
+		wrm := newWaitingRoom(msg.usc)
 		wrm.list.Title = "GameID: " + msg.gameId.GameId
 		cmd = wrm.Init()
 		return wrm, cmd
@@ -177,8 +177,8 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
-		h, v := docStyle.GetFrameSize()
+		m.usc.SetWindowsSize(msg)
+		h, v := m.docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		var model tea.Model
 		model, cmd = m.fullHelp.Update(msg)
@@ -216,22 +216,22 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, m.keys.insertItem):
-			mg := newMakeGame(m, m.userGlobal)
+			mg := newMakeGame(m, m.usc)
 			return mg, mg.Init()
 		case key.Matches(msg, m.keys.joinGame):
-			jg := newJoinGame(m, m.userGlobal)
+			jg := newJoinGame(m, m.usc)
 			return jg, jg.Init()
 		case key.Matches(msg, m.keys.replayGame):
-			rg := newReplayGame(m, m.userGlobal)
+			rg := newReplayGame(m, m.usc)
 			return rg, rg.Init()
 		case key.Matches(msg, m.keys.emoji):
-			if m.userGlobal.RenderEmoji {
+			if m.usc.RenderEmoji() {
 				m.list.StatusMessageLifetime = time.Second * 2
-				m.userGlobal.RenderEmoji = false
+				m.usc.SetRenderEmoji(false)
 				cmds = append(cmds, m.list.NewStatusMessage("Emoji rendering disabled."))
 			} else {
 				m.list.StatusMessageLifetime = time.Second * 2
-				m.userGlobal.RenderEmoji = true
+				m.usc.SetRenderEmoji(true)
 				cmds = append(cmds, m.list.NewStatusMessage("Emoji rendering enabled."))
 			}
 		}
@@ -247,7 +247,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (lm lobbyModel) refreshSessionCheck() tea.Cmd {
 	return func() tea.Msg {
-		return lm.userGlobal.ReqHandler.RefreshSessionCheck(5 * time.Minute)
+		return lm.usc.ReqHandler().RefreshSessionCheck(5 * time.Minute)
 	}
 }
 
@@ -255,7 +255,7 @@ func (lm lobbyModel) View() string {
 	if lm.showFH {
 		return lm.fullHelp.View()
 	}
-	return docStyle.Render(lm.list.View())
+	return lm.docStyle.Render(lm.list.View())
 }
 
 func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
@@ -271,7 +271,7 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 
 		return lm, tea.Batch(cmd, func() tea.Msg {
 			time.Sleep(time.Second * testDelay)
-			newItems := lm.userGlobal.ReqHandler.LobbyRequest()
+			newItems := lm.usc.ReqHandler().LobbyRequest()
 			return itemsMsg{
 				items: newItems,
 			}
@@ -282,20 +282,20 @@ func (lm lobbyModel) updateIfStale(stale int) (lobbyModel, tea.Cmd) {
 }
 
 type joinGameMsg struct {
-	gameId     requests.GameId
-	userGlobal UserGlobal
+	gameId requests.GameId
+	usc    UserScreenContext
 }
 
 func (m *lobbyModel) joinGame(game requests.Game) tea.Cmd {
 	return func() tea.Msg {
 		gameId := requests.GameId{GameId: game.GameId}
 		emptyGame := requests.NewGame{}
-		newGame := m.userGlobal.ReqHandler.JoinGameRequest(gameId, game.Server, m.userGlobal.Username)
+		newGame := m.usc.ReqHandler().JoinGameRequest(gameId, game.Server, m.usc.Username())
 		if emptyGame != newGame {
-			m.userGlobal.ReqHandler.SetGameServer(newGame.GameServer)
+			m.usc.ReqHandler().SetGameServer(newGame.GameServer)
 			return joinGameMsg{
-				gameId:     gameId,
-				userGlobal: m.userGlobal,
+				gameId: gameId,
+				usc:    m.usc,
 			}
 		} else {
 			return nil

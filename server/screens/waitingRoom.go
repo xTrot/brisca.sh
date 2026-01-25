@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 )
 
@@ -61,10 +62,12 @@ type waitingRoomModel struct {
 	keys           *wrKeyMap
 	descDelegate   list.DefaultDelegate
 	noDescDelegate list.DefaultDelegate
-	userGlobal     UserGlobal
+	usc            UserScreenContext
+
+	docStyle lipgloss.Style
 }
 
-func newWaitingRoom(userGlobal UserGlobal) waitingRoomModel {
+func newWaitingRoom(usc UserScreenContext) waitingRoomModel {
 	var (
 		listKeys = newWrKeyMap()
 	)
@@ -78,8 +81,10 @@ func newWaitingRoom(userGlobal UserGlobal) waitingRoomModel {
 		keys:           listKeys,
 		descDelegate:   descDelegate,
 		noDescDelegate: noDescDelegate,
-		userGlobal:     userGlobal,
+		usc:            usc,
 	}
+
+	wrm.docStyle = wrm.usc.Renderer().NewStyle().Margin(1, 2)
 
 	wrm.list.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
@@ -99,7 +104,7 @@ func newWaitingRoom(userGlobal UserGlobal) waitingRoomModel {
 			listKeys.leave,
 		}
 	}
-	wrm.list.Title = "User " + wrm.userGlobal.Username
+	wrm.list.Title = "User " + wrm.usc.Username()
 	wrm.list.DisableQuitKeybindings()
 	wrm.list.SetFilteringEnabled(false)
 	wrm.list.SetShowStatusBar(false)
@@ -108,13 +113,13 @@ func newWaitingRoom(userGlobal UserGlobal) waitingRoomModel {
 }
 
 func (m waitingRoomModel) Init() tea.Cmd {
-	return tea.Batch(m.every(wrUpdateInterval), m.userGlobal.LastWindowSizeReplay())
+	return tea.Batch(m.every(wrUpdateInterval), m.usc.LastWindowSizeReplay())
 }
 
 func (m waitingRoomModel) startGameScreen() (tea.Model, tea.Cmd) {
-	gs := newGSModel(m.userGlobal)
+	gs := newGSModel(m.usc)
 	return Transition(
-		m.userGlobal,
+		m.usc,
 		gs,
 		time.Millisecond*500,
 		"Starting Game",
@@ -128,7 +133,7 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case updateWRMsg:
 		if msg.wr.TimedOut {
-			lm := NewLobby(m.userGlobal)
+			lm := NewLobby(m.usc)
 			return lm, lm.Init()
 		}
 		m.wr = msg.wr
@@ -147,16 +152,16 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.startGameScreen()
 
 	case leaveGameMsg:
-		lobby := NewLobby(m.userGlobal)
-		lobby.list.Title = "User: " + m.userGlobal.Username
+		lobby := NewLobby(m.usc)
+		lobby.list.Title = "User: " + m.usc.Username()
 		cmds = append(cmds, lobby.Init())
 		lm, cmd := lobby.Update(msg)
 		cmds = append(cmds, cmd)
 		return lm, tea.Batch(cmds...)
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
-		h, v := docStyle.GetFrameSize()
+		m.usc.SetWindowsSize(msg)
+		h, v := m.docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
 
@@ -200,12 +205,12 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m waitingRoomModel) refreshSessionCheck() tea.Cmd {
 	return func() tea.Msg {
-		return m.userGlobal.ReqHandler.RefreshSessionCheck(10 * time.Minute)
+		return m.usc.ReqHandler().RefreshSessionCheck(10 * time.Minute)
 	}
 }
 
 func (m waitingRoomModel) View() string {
-	return docStyle.Render(m.list.View())
+	return m.docStyle.Render(m.list.View())
 }
 
 func (m *waitingRoomModel) every(interval time.Duration) tea.Cmd {
@@ -220,7 +225,7 @@ type readyToggleMsg struct{}
 
 func (m waitingRoomModel) readyToggle() tea.Cmd {
 	return func() tea.Msg {
-		if m.userGlobal.ReqHandler.ReadyRequest() {
+		if m.usc.ReqHandler().ReadyRequest() {
 			return readyToggleMsg{}
 		} else {
 			return nil
@@ -232,7 +237,7 @@ type startGameMsg struct{}
 
 func (m waitingRoomModel) startGame() tea.Cmd {
 	return func() tea.Msg {
-		if m.userGlobal.ReqHandler.StartGameRequest() {
+		if m.usc.ReqHandler().StartGameRequest() {
 			return startGameMsg{}
 		} else {
 			return nil
@@ -244,7 +249,7 @@ type leaveGameMsg struct{}
 
 func (m waitingRoomModel) leaveGame() tea.Cmd {
 	return func() tea.Msg {
-		if m.userGlobal.ReqHandler.LeaveGameRequest() {
+		if m.usc.ReqHandler().LeaveGameRequest() {
 			return leaveGameMsg{}
 		} else {
 			return nil
@@ -253,7 +258,7 @@ func (m waitingRoomModel) leaveGame() tea.Cmd {
 }
 
 func (m *waitingRoomModel) updateWaitingRoom(t time.Time) tea.Msg {
-	newWR := m.userGlobal.ReqHandler.WaitingRoomRequest()
+	newWR := m.usc.ReqHandler().WaitingRoomRequest()
 
 	return updateWRMsg{
 		wr: newWR,
@@ -264,7 +269,7 @@ type changedTeamMsg bool
 
 func (m *waitingRoomModel) changeTeam(spectator bool) tea.Cmd {
 	return func() tea.Msg {
-		success := changedTeamMsg(m.userGlobal.ReqHandler.ChangeTeamRequest(spectator))
+		success := changedTeamMsg(m.usc.ReqHandler().ChangeTeamRequest(spectator))
 		return success
 	}
 }

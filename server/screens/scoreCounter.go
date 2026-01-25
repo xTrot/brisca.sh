@@ -15,13 +15,13 @@ type scoreCounter struct {
 	index        int
 	name         string
 	cards        []game.Card
-	style        lipgloss.Style
 	spinner      spinner.Model
 	countedCards []countedCard
 	counted      int
 	total        int
 
 	renderEmoji bool
+	style       lipgloss.Style
 }
 
 type countedCard struct {
@@ -30,17 +30,23 @@ type countedCard struct {
 	total    int
 }
 
-func newScoreCounter(index int, name string, cards []game.Card, renderEmoji bool) scoreCounter {
+func newScoreCounter(
+	index int,
+	name string,
+	cards []game.Card,
+	renderEmoji bool,
+	renderer *lipgloss.Renderer,
+) scoreCounter {
 	const showLastResults = 5
 
 	sp := spinner.New()
-	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("206"))
+	sp.Style = renderer.NewStyle().Foreground(lipgloss.Color("206"))
 
 	return scoreCounter{
 		index: index,
 		name:  name,
 		cards: cards,
-		style: lipgloss.NewStyle().
+		style: renderer.NewStyle().
 			Align(lipgloss.Center, lipgloss.Center).
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("69")).

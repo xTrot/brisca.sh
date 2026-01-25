@@ -10,7 +10,7 @@ import (
 )
 
 type TransitionModel struct {
-	userGlobal UserGlobal
+	usc UserScreenContext
 
 	waitStyle  lipgloss.Style
 	spinner    spinner.Model
@@ -20,7 +20,7 @@ type TransitionModel struct {
 }
 
 func Transition(
-	userGlobal UserGlobal,
+	usc UserScreenContext,
 	nextScreen tea.Model,
 	duration time.Duration,
 	msg string,
@@ -34,18 +34,18 @@ func Transition(
 	}
 
 	rtn := TransitionModel{
-		userGlobal: userGlobal,
+		usc:        usc,
 		nextScreen: nextScreen,
 		duration:   duration,
 		msg:        result,
 
-		waitStyle: userGlobal.Renderer.NewStyle().
+		waitStyle: usc.Renderer().NewStyle().
 			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Center),
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
 			spinner.WithStyle(
-				userGlobal.Renderer.NewStyle().
+				usc.Renderer().NewStyle().
 					AlignHorizontal(lipgloss.Center).
 					AlignVertical(lipgloss.Center),
 			),
@@ -68,7 +68,7 @@ func (m TransitionModel) Init() tea.Cmd {
 				return doneMsg{}
 			},
 		),
-		m.userGlobal.LastWindowSizeReplay(),
+		m.usc.LastWindowSizeReplay(),
 	)
 
 }
@@ -80,7 +80,7 @@ func (m TransitionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
+		m.usc.SetWindowsSize(msg)
 		m.waitStyle = m.waitStyle.
 			Height(msg.Height).
 			Width(msg.Width)

@@ -8,22 +8,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	bottomCardSwappedStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("16")).
-		Background(lipgloss.Color("226"))
-)
-
 type tableModel struct {
 	deckSize    int
 	bottomCard  game.Card
 	cardsInPlay []game.Card
 
-	bottomCardStyle lipgloss.Style
-	renderEmoji     bool
+	bottomCardStyle        lipgloss.Style
+	bottomCardSwappedStyle lipgloss.Style
+	renderEmoji            bool
 }
 
-func newTableModel(renderEmoji bool) tableModel {
+func newTableModel(renderEmoji bool, renderer *lipgloss.Renderer) tableModel {
 	return tableModel{
 		deckSize:   40,
 		bottomCard: game.NewCard("BASTO:3"),
@@ -32,8 +27,11 @@ func newTableModel(renderEmoji bool) tableModel {
 			game.NewCard("ORO:5"),
 			game.NewCard("COPA:10"),
 		},
-		bottomCardStyle: lipgloss.NewStyle(),
-		renderEmoji:     renderEmoji,
+		bottomCardStyle: renderer.NewStyle(),
+		bottomCardSwappedStyle: renderer.NewStyle().
+			Foreground(lipgloss.Color("16")).
+			Background(lipgloss.Color("226")),
+		renderEmoji: renderEmoji,
 	}
 }
 
@@ -45,7 +43,7 @@ func (tm tableModel) Update(msg tea.Msg) (tableModel, tea.Cmd) {
 
 	switch msg.(type) {
 	case game.SwapBottomCardPayload:
-		tm.bottomCardStyle = bottomCardSwappedStyle
+		tm.bottomCardStyle = tm.bottomCardSwappedStyle
 	}
 
 	return tm, nil

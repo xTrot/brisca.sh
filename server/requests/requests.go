@@ -268,6 +268,9 @@ func (m Handler) StatusRequest(stype ServerType) bool {
 func (m *Handler) RegisterRequest(register Register, server string) bool {
 	payload, _ := json.Marshal(register)
 	reader := bytes.NewReader(payload)
+	if server == "" {
+		server = m.browserServer
+	}
 	requestURL := fmt.Sprintf("%s/register", server)
 
 	client := &http.Client{

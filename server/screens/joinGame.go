@@ -14,17 +14,17 @@ import (
 )
 
 type joinGameModel struct {
-	form       *huh.Form // huh.Form is just a tea.Model
-	nextView   tea.Model
-	userGlobal UserGlobal
-	gameId     *string
-	replay     bool
-	waiting    bool
-	waitStyle  lipgloss.Style
-	spinner    spinner.Model
+	form      *huh.Form // huh.Form is just a tea.Model
+	nextView  tea.Model
+	usc       UserScreenContext
+	gameId    *string
+	replay    bool
+	waiting   bool
+	waitStyle lipgloss.Style
+	spinner   spinner.Model
 }
 
-func newReplayGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
+func newReplayGame(nv tea.Model, usc UserScreenContext) joinGameModel {
 	var gameId string
 	return joinGameModel{
 		gameId: &gameId,
@@ -35,17 +35,17 @@ func newReplayGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
 					Value(&gameId),
 			),
 		),
-		nextView:   nv,
-		userGlobal: userGlobal,
-		replay:     true,
-		waiting:    false,
-		waitStyle: userGlobal.Renderer.NewStyle().
+		nextView: nv,
+		usc:      usc,
+		replay:   true,
+		waiting:  false,
+		waitStyle: usc.Renderer().NewStyle().
 			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Center),
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
 			spinner.WithStyle(
-				userGlobal.Renderer.NewStyle().
+				usc.Renderer().NewStyle().
 					AlignHorizontal(lipgloss.Center).
 					AlignVertical(lipgloss.Center),
 			),
@@ -53,7 +53,7 @@ func newReplayGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
 	}
 }
 
-func newJoinGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
+func newJoinGame(nv tea.Model, usc UserScreenContext) joinGameModel {
 	var gameId string
 	return joinGameModel{
 		gameId: &gameId,
@@ -64,17 +64,17 @@ func newJoinGame(nv tea.Model, userGlobal UserGlobal) joinGameModel {
 					Value(&gameId),
 			),
 		),
-		nextView:   nv,
-		userGlobal: userGlobal,
-		replay:     false,
-		waiting:    false,
-		waitStyle: userGlobal.Renderer.NewStyle().
+		nextView: nv,
+		usc:      usc,
+		replay:   false,
+		waiting:  false,
+		waitStyle: usc.Renderer().NewStyle().
 			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Center),
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
 			spinner.WithStyle(
-				userGlobal.Renderer.NewStyle().
+				usc.Renderer().NewStyle().
 					AlignHorizontal(lipgloss.Center).
 					AlignVertical(lipgloss.Center),
 			),
@@ -86,7 +86,7 @@ func (m joinGameModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.form.Init(),
 		m.spinner.Tick,
-		m.userGlobal.LastWindowSizeReplay(),
+		m.usc.LastWindowSizeReplay(),
 	)
 }
 
@@ -97,12 +97,12 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
 	var cmds []tea.Cmd
-	quit, cmd := HasRetiredUser(m.userGlobal)
+	quit, cmd := HasRetiredUser(&m.usc)
 	if cmd != nil {
 		return quit, cmd
 	}
 
-	if time.Now().After(m.userGlobal.ReqHandler.RefreshBy) {
+	if time.Now().After(m.usc.ReqHandler().RefreshBy) {
 		log.Debug("Idle Disconnect")
 		return NewModel("Idle Disconnect")
 	}
@@ -121,12 +121,12 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			cmd = func() tea.Msg {
 				log.Debug("Requesting replay:",
-					"m.userGlobal.Username", m.userGlobal.Username,
+					"m.usc.Username", m.usc.Username,
 					"gameId", gameId,
 				)
 				time.Sleep(time.Second)
 				rtn := replayMsg(
-					m.userGlobal.ReqHandler.ReplayRequest(gameId),
+					m.usc.ReqHandler().ReplayRequest(gameId),
 				)
 				log.Debug("Result:", "rtn", rtn)
 				return rtn
@@ -136,14 +136,14 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			cmd = func() tea.Msg {
 				log.Debug("Requesting joinPrivateGame:",
-					"m.userGlobal.Username", m.userGlobal.Username,
+					"m.usc.Username", m.usc.Username,
 					"gameId", gameId,
 				)
 				time.Sleep(time.Second)
 				rtn := joinedMsg(
-					m.userGlobal.ReqHandler.JoinPrivateGameRequest(
+					m.usc.ReqHandler().JoinPrivateGameRequest(
 						gameId,
-						m.userGlobal.Username,
+						m.usc.Username(),
 					),
 				)
 				log.Debug("Result:", "rtn", rtn)
@@ -161,7 +161,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case replayMsg:
 		if msg != nil {
-			rgs := newReplayGSModel(m.userGlobal, msg)
+			rgs := newReplayGSModel(m.usc, msg)
 			return rgs, rgs.Init()
 		} else {
 			return m.nextView, m.nextView.Init()
@@ -171,8 +171,8 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		emptyGame := requests.NewGame{}
 		newGame := requests.NewGame(msg)
 		if emptyGame != newGame {
-			m.userGlobal.ReqHandler.SetGameServer(newGame.GameServer)
-			wrm := newWaitingRoom(m.userGlobal)
+			m.usc.ReqHandler().SetGameServer(newGame.GameServer)
+			wrm := newWaitingRoom(m.usc)
 			wrm.list.Title = "GameID: " + *m.gameId
 			cmd = wrm.Init()
 			return wrm, cmd
@@ -187,7 +187,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
+		m.usc.SetWindowsSize(msg)
 		m.waitStyle = m.waitStyle.
 			Height(msg.Height).
 			Width(msg.Width)

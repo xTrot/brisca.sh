@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"brisca.sh/server/requests"
 	"brisca.sh/server/screens"
 	gossh "golang.org/x/crypto/ssh"
 
@@ -132,7 +133,9 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		return quit, []tea.ProgramOption{}
 	}
 
-	m := screens.NewRegisterScreen(&s, Env.BrowserServer, Env.GameServer)
+	usc := screens.NewUserScreenContext(s, requests.NewHandler(Env.BrowserServer, Env.GameServer))
+
+	m := screens.NewRegisterScreen(usc)
 	return m, []tea.ProgramOption{tea.WithAltScreen(), tea.WithoutSignalHandler()}
 }
 

@@ -6,9 +6,9 @@ var (
 	Retired = false
 )
 
-func HasRetiredUser(ug UserGlobal) (tea.Model, tea.Cmd) {
+func HasRetiredUser(usc *UserScreenContext) (tea.Model, tea.Cmd) {
 
-	if Retired && ug.IsIdle() {
+	if Retired && usc.IsIdle() {
 		return NewModel("Your server has been retired, please reconnect.")
 	} else {
 		return nil, nil

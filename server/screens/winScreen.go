@@ -12,18 +12,6 @@ import (
 )
 
 var (
-	winScreenStyle = lipgloss.NewStyle().
-			Align(lipgloss.Center, lipgloss.Center).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("69"))
-	winnerStyle = lipgloss.NewStyle().
-			Align(lipgloss.Center, lipgloss.Center).
-			BorderStyle(lipgloss.HiddenBorder()).
-			BorderForeground(lipgloss.Color("69"))
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")).
-			Align(lipgloss.Left, lipgloss.Center).
-			BorderStyle(lipgloss.HiddenBorder())
 	DEBOUNCE_TIME = time.Second
 )
 
@@ -31,11 +19,14 @@ type winScreen struct {
 	scArray    [3]scoreCounter
 	scSize     int
 	countDone  int
-	style      lipgloss.Style
 	gameConfig game.GameConfigPayload
 	winString  string
-	userGlobal UserGlobal
+	usc        UserScreenContext
 	debounced  bool
+
+	style       lipgloss.Style
+	winnerStyle lipgloss.Style
+	helpStyle   lipgloss.Style
 }
 
 type debounceMsg struct{}
@@ -51,7 +42,12 @@ type doneCounting struct {
 	index int
 }
 
-func newWinScreen(gc *game.GameConfigPayload, players []playerModel, gameWon *game.GameWonPayload, userGlobal UserGlobal) winScreen {
+func newWinScreen(
+	gc *game.GameConfigPayload,
+	players []playerModel,
+	gameWon *game.GameWonPayload,
+	usc UserScreenContext,
+) winScreen {
 
 	var firstScoreCounter scoreCounter
 	var secondScoreCounter scoreCounter
@@ -61,8 +57,8 @@ func newWinScreen(gc *game.GameConfigPayload, players []playerModel, gameWon *ga
 
 	switch gc.MaxPlayers {
 	case 2:
-		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.RenderEmoji)
-		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.RenderEmoji)
+		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, usc.RenderEmoji(), usc.Renderer())
+		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, usc.RenderEmoji(), usc.Renderer())
 		scSize = 2
 		switch gameWon.Seat {
 		case -1:
@@ -71,9 +67,9 @@ func newWinScreen(gc *game.GameConfigPayload, players []playerModel, gameWon *ga
 			winString = players[gameWon.Seat].name + " won!!!"
 		}
 	case 3:
-		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, userGlobal.RenderEmoji)
-		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, userGlobal.RenderEmoji)
-		thirdScoreCounter = newScoreCounter(2, players[2].name, players[2].scorePile, userGlobal.RenderEmoji)
+		firstScoreCounter = newScoreCounter(0, players[0].name, players[0].scorePile, usc.RenderEmoji(), usc.Renderer())
+		secondScoreCounter = newScoreCounter(1, players[1].name, players[1].scorePile, usc.RenderEmoji(), usc.Renderer())
+		thirdScoreCounter = newScoreCounter(2, players[2].name, players[2].scorePile, usc.RenderEmoji(), usc.Renderer())
 		scSize = 3
 		switch gameWon.Seat {
 		case -1:
@@ -84,8 +80,8 @@ func newWinScreen(gc *game.GameConfigPayload, players []playerModel, gameWon *ga
 	case 4:
 		teamAString := fmt.Sprintf("Team A:\n %s and %s", players[0].name, players[2].name)
 		teamBString := fmt.Sprintf("Team B:\n %s and %s", players[1].name, players[3].name)
-		firstScoreCounter = newScoreCounter(0, "Team A", append(players[0].scorePile, players[2].scorePile...), userGlobal.RenderEmoji)
-		secondScoreCounter = newScoreCounter(1, "Team B", append(players[1].scorePile, players[3].scorePile...), userGlobal.RenderEmoji)
+		firstScoreCounter = newScoreCounter(0, "Team A", append(players[0].scorePile, players[2].scorePile...), usc.RenderEmoji(), usc.Renderer())
+		secondScoreCounter = newScoreCounter(1, "Team B", append(players[1].scorePile, players[3].scorePile...), usc.RenderEmoji(), usc.Renderer())
 		scSize = 2
 		switch gameWon.Team {
 		case "A":
@@ -99,24 +95,39 @@ func newWinScreen(gc *game.GameConfigPayload, players []playerModel, gameWon *ga
 		panic(fmt.Sprintf("gameConfig.MaxPlayers not 2-4, gameConfig=%v", gc))
 	}
 
-	return winScreen{
-		style:      winScreenStyle,
+	m := winScreen{
 		gameConfig: *gc,
 		scArray: [3]scoreCounter{
 			firstScoreCounter,
 			secondScoreCounter,
 			thirdScoreCounter,
 		},
-		scSize:     scSize,
-		winString:  winString,
-		userGlobal: userGlobal,
+		scSize:    scSize,
+		winString: winString,
+		usc:       usc,
 	}
+
+	m.style = m.usc.Renderer().NewStyle().
+		Align(lipgloss.Center, lipgloss.Center).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("69"))
+	m.winnerStyle = m.usc.Renderer().NewStyle().
+		Align(lipgloss.Center, lipgloss.Center).
+		BorderStyle(lipgloss.HiddenBorder()).
+		BorderForeground(lipgloss.Color("69"))
+	m.helpStyle = m.usc.Renderer().NewStyle().
+		Foreground(lipgloss.Color("241")).
+		Align(lipgloss.Left, lipgloss.Center).
+		BorderStyle(lipgloss.HiddenBorder())
+
+	return m
+
 }
 
 func (m winScreen) Init() tea.Cmd {
 	if m.gameConfig.MaxPlayers == 3 {
 		return tea.Batch(
-			m.userGlobal.LastWindowSizeReplay(),
+			m.usc.LastWindowSizeReplay(),
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
 			m.scArray[2].Init(),
@@ -124,7 +135,7 @@ func (m winScreen) Init() tea.Cmd {
 		)
 	} else {
 		return tea.Batch(
-			m.userGlobal.LastWindowSizeReplay(),
+			m.usc.LastWindowSizeReplay(),
 			m.scArray[0].Init(),
 			m.scArray[1].Init(),
 			debounce(),
@@ -138,14 +149,14 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
-	quit, cmd := HasRetiredUser(m.userGlobal)
+	quit, cmd := HasRetiredUser(&m.usc)
 	if cmd != nil {
 		return quit, cmd
 	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
+		m.usc.SetWindowsSize(msg)
 		m.style = m.style.
 			Width(max(windowWidthMin, msg.Width) - 2).
 			Height(max(windowHighttMin, msg.Height) - 2)
@@ -159,7 +170,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if cmd != nil {
 				return quit, cmd
 			}
-			lm := NewLobby(m.userGlobal)
+			lm := NewLobby(m.usc)
 			return lm, lm.Init()
 		}
 	case pretendCountMsg:
@@ -205,9 +216,9 @@ func (m winScreen) View() string {
 	}
 
 	s = lipgloss.JoinVertical(lipgloss.Center,
-		winnerStyle.Render(winner),
+		m.winnerStyle.Render(winner),
 		s,
-		helpStyle.AlignHorizontal(lipgloss.Center).Render("Press any key to exit"))
+		m.helpStyle.AlignHorizontal(lipgloss.Center).Render("Press any key to exit"))
 
 	return m.style.Render(s)
 }

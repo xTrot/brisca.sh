@@ -24,7 +24,7 @@ func newItemDelegate(keys *delegateKeyMap, lm *lobbyModel) list.DefaultDelegate 
 			switch {
 			case key.Matches(msg, keys.choose):
 				var cmds []tea.Cmd
-				cmd := m.NewStatusMessage(statusMessageStyle("You chose " + selectedGame.GameId))
+				cmd := m.NewStatusMessage(lm.statusMessageStyle.Render("You chose " + selectedGame.GameId))
 				cmds = append(cmds, cmd)
 				cmd = lm.joinGame(selectedGame)
 				cmds = append(cmds, cmd)

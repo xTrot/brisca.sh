@@ -28,22 +28,6 @@ var (
 		spinner.Moon,
 		spinner.Monkey,
 	}
-	emptyBoxStyle = lipgloss.NewStyle().
-			Align(lipgloss.Center, lipgloss.Center).
-			BorderStyle(lipgloss.HiddenBorder())
-	tableBoxStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("82"))
-	inactiveColor  = lipgloss.Color("240")
-	activeColor    = lipgloss.Color("69")
-	playerBoxStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(inactiveColor)
-	gsHelpStyle = lipgloss.NewStyle().
-			Align(lipgloss.Center, lipgloss.Center).
-			Foreground(lipgloss.Color("241"))
-	selectedCardStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("69"))
 	windowWidthMin  = 80
 	windowHighttMin = 24
 )
@@ -70,7 +54,7 @@ func (m *gsModel) Refresh() tea.Cmd {
 		var fetched []game.Action
 		var msg newActionsMsg
 		if !m.gameOver {
-			fetched = m.userGlobal.ReqHandler.ActionsRequest()
+			fetched = m.usc.ReqHandler().ActionsRequest()
 		}
 		msg.actions, msg.gameOver = injectClientActions(fetched)
 		return msg
@@ -127,25 +111,49 @@ type gsModel struct {
 	table        tableModel
 	gameConfig   game.GameConfigPayload
 	statusBar    statusBarModel
-	userGlobal   UserGlobal
+	usc          UserScreenContext
 	help         gameScreenHelpModel
 	cheatSheet   MarkdownModel
 	showCheat    bool
 	gameOver     bool
+
+	emptyBoxStyle     lipgloss.Style
+	tableBoxStyle     lipgloss.Style
+	playerBoxStyle    lipgloss.Style
+	gsHelpStyle       lipgloss.Style
+	selectedCardStyle lipgloss.Style
+	inactiveColor     lipgloss.Color
+	activeColor       lipgloss.Color
 }
 
-func newReplayGSModel(userGlobal UserGlobal, actions []game.Action) gsModel {
-	m := newGSModel(userGlobal)
+func newReplayGSModel(usc UserScreenContext, actions []game.Action) gsModel {
+	m := newGSModel(usc)
 
 	m.actionCache.actions, m.gameOver = injectClientActions(actions)
 
 	return m
 }
 
-func newGSModel(userGlobal UserGlobal) gsModel {
+func newGSModel(usc UserScreenContext) gsModel {
 	m := gsModel{
-		userGlobal: userGlobal,
+		usc: usc,
 	}
+	m.emptyBoxStyle = m.usc.Renderer().NewStyle().
+		Align(lipgloss.Center, lipgloss.Center).
+		BorderStyle(lipgloss.HiddenBorder())
+	m.tableBoxStyle = m.usc.Renderer().NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("82"))
+	m.inactiveColor = lipgloss.Color("240")
+	m.activeColor = lipgloss.Color("69")
+	m.gsHelpStyle = m.usc.Renderer().NewStyle().
+		Align(lipgloss.Center, lipgloss.Center).
+		Foreground(lipgloss.Color("241"))
+	m.selectedCardStyle = m.usc.Renderer().NewStyle().
+		Background(lipgloss.Color("69"))
+	m.playerBoxStyle = m.usc.Renderer().NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(m.inactiveColor)
 	m.spinner = spinner.New()
 	var boxes [3][3]box
 	for i := range 3 {
@@ -156,15 +164,15 @@ func newGSModel(userGlobal UserGlobal) gsModel {
 		}
 	}
 	m.boxes = boxes
-	m.boxes[0][0].style = emptyBoxStyle
-	m.boxes[0][1].style = playerBoxStyle
-	m.boxes[0][2].style = emptyBoxStyle
-	m.boxes[1][0].style = emptyBoxStyle
-	m.boxes[1][1].style = tableBoxStyle
-	m.boxes[1][2].style = emptyBoxStyle
-	m.boxes[2][0].style = emptyBoxStyle
-	m.boxes[2][1].style = playerBoxStyle
-	m.boxes[2][2].style = emptyBoxStyle
+	m.boxes[0][0].style = m.emptyBoxStyle
+	m.boxes[0][1].style = m.playerBoxStyle
+	m.boxes[0][2].style = m.emptyBoxStyle
+	m.boxes[1][0].style = m.emptyBoxStyle
+	m.boxes[1][1].style = m.tableBoxStyle
+	m.boxes[1][2].style = m.emptyBoxStyle
+	m.boxes[2][0].style = m.emptyBoxStyle
+	m.boxes[2][1].style = m.playerBoxStyle
+	m.boxes[2][2].style = m.emptyBoxStyle
 	m.selectedCard = 0
 	m.actionCache = actionCache{
 		actions:     []game.Action{},
@@ -174,13 +182,13 @@ func newGSModel(userGlobal UserGlobal) gsModel {
 	}
 	m.hand = []game.Card{}
 	m.playerSeats = []playerModel{
-		newPlayerModel(m.userGlobal.RenderEmoji),
-		newPlayerModel(m.userGlobal.RenderEmoji),
-		newPlayerModel(m.userGlobal.RenderEmoji),
-		newPlayerModel(m.userGlobal.RenderEmoji),
+		newPlayerModel(m.usc.RenderEmoji()),
+		newPlayerModel(m.usc.RenderEmoji()),
+		newPlayerModel(m.usc.RenderEmoji()),
+		newPlayerModel(m.usc.RenderEmoji()),
 	}
-	m.table = newTableModel(userGlobal.RenderEmoji)
-	m.statusBar = newStatusBar(m.playerSeats, userGlobal.RenderEmoji)
+	m.table = newTableModel(usc.RenderEmoji(), m.usc.Renderer())
+	m.statusBar = newStatusBar(m.playerSeats, usc.RenderEmoji())
 	m.help = newGSHelp()
 	m.cheatSheet = NewCheatSheetModel()
 	return m
@@ -188,13 +196,13 @@ func newGSModel(userGlobal UserGlobal) gsModel {
 
 func (m gsModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
-	return tea.Batch(m.spinner.Tick, m.userGlobal.LastWindowSizeReplay(), m.getMySeat(),
+	return tea.Batch(m.spinner.Tick, m.usc.LastWindowSizeReplay(), m.getMySeat(),
 		m.statusBar.Init(), m.updateHand(false))
 }
 
 func (m gsModel) getMySeat() tea.Cmd {
 	return func() tea.Msg {
-		mySeat := m.userGlobal.ReqHandler.MySeatRequest()
+		mySeat := m.usc.ReqHandler().MySeatRequest()
 		return mySeat
 	}
 }
@@ -213,7 +221,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cheatSheet.Style = msg.csStyle
 		return m, nil
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
+		m.usc.SetWindowsSize(msg)
 		return m.updateWindow(msg)
 	case newActionsMsg:
 		if len(msg.actions) > 0 {
@@ -228,17 +236,17 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.ProcessAction()
 		cmds = append(cmds, cmd)
 	case requests.RefreshByMsg:
-		m.userGlobal.ReqHandler.RefreshBy = time.Time(msg)
+		m.usc.ReqHandler().RefreshBy = time.Time(msg)
 	case tea.KeyMsg:
 		cmd = m.refreshSessionCheck()
 		cmds = append(cmds, cmd)
 		switch {
 		case key.Matches(msg, m.help.keys.Quit):
-			m.userGlobal.ReqHandler.LeaveGameRequest()
+			m.usc.ReqHandler().LeaveGameRequest()
 			return m, tea.Quit
 		// case "q":
-		// 	m.userGlobal.rh.leaveGameRequest()
-		// 	lm := newLobby(m.userGlobal)
+		// 	m.usc.rh.leaveGameRequest()
+		// 	lm := newLobby(m.usc)
 		// 	return lm, lm.Init()
 		case key.Matches(msg, m.help.keys.Left):
 			handSize := len(m.hand)
@@ -345,8 +353,8 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case game.GameWonPayload:
 		m.actionCache.processed++
-		m.userGlobal.LastRegisteredAction = time.Now()
-		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.userGlobal)
+		m.usc.SetLastRegisteredAction()
+		ws := newWinScreen(&m.gameConfig, m.playerSeats, &msg, m.usc)
 		return ws, ws.Init()
 	case game.UndefinedActionPayload:
 		m.actionCache.processed++
@@ -364,10 +372,10 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case seatsMsg:
 		m.playerSeats = msg
 		for i := range msg {
-			m.boxes[msg[i].boxX][msg[i].boxY].style = playerBoxStyle
+			m.boxes[msg[i].boxX][msg[i].boxY].style = m.playerBoxStyle
 		}
 		m.statusBar, cmd = m.statusBar.Update(msg)
-		cmds = append(cmds, cmd, m.userGlobal.LastWindowSizeReplay())
+		cmds = append(cmds, cmd, m.usc.LastWindowSizeReplay())
 	case requests.MySeat:
 		m.statusBar, cmd = m.statusBar.Update(msg)
 		cmds = append(cmds, cmd)
@@ -379,7 +387,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *gsModel) refreshSessionCheck() tea.Cmd {
 	return func() tea.Msg {
-		return m.userGlobal.ReqHandler.RefreshSessionCheck(14 * time.Minute)
+		return m.usc.ReqHandler().RefreshSessionCheck(14 * time.Minute)
 	}
 }
 
@@ -389,7 +397,7 @@ func (m gsModel) processSeats(seats []game.Seat) tea.Cmd {
 	return func() tea.Msg {
 		var seatsMsg seatsMsg
 		for i := range seats {
-			player := newPlayerModelFromSeat(seats[i], m.userGlobal.RenderEmoji)
+			player := newPlayerModelFromSeat(seats[i], m.usc.RenderEmoji())
 			// This part only works because case mySeat: happens first then seatsMsg
 			adjustedSeat := (i - m.statusBar.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
 			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.statusBar.turn, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
@@ -484,10 +492,10 @@ func (m gsModel) View() string {
 			)
 			if m.statusBar.turn == i {
 				m.boxes[x][y].style = m.boxes[x][y].style.
-					BorderForeground(activeColor)
+					BorderForeground(m.activeColor)
 			} else {
 				m.boxes[x][y].style = m.boxes[x][y].style.
-					BorderForeground(inactiveColor)
+					BorderForeground(m.inactiveColor)
 			}
 		}
 
@@ -502,7 +510,7 @@ func (m gsModel) View() string {
 		s = lipgloss.JoinVertical(lipgloss.Top, s, m.handView())
 		s = lipgloss.JoinVertical(lipgloss.Top, s, lipgloss.JoinHorizontal(lipgloss.Left, m.statusBar.View(m.hand)))
 	}
-	s = lipgloss.JoinVertical(lipgloss.Center, s, gsHelpStyle.Render(m.help.View()))
+	s = lipgloss.JoinVertical(lipgloss.Center, s, m.gsHelpStyle.Render(m.help.View()))
 	return s
 }
 
@@ -520,9 +528,9 @@ func (m *gsModel) handView() string {
 	for i := range m.hand {
 		card := (m.hand)[i]
 		if m.selectedCard == i {
-			s += fmt.Sprintf("%2d:%s", i+1, selectedCardStyle.Render(card.RenderCard(m.userGlobal.RenderEmoji)))
+			s += fmt.Sprintf("%2d:%s", i+1, m.selectedCardStyle.Render(card.RenderCard(m.usc.RenderEmoji())))
 		} else {
-			s += fmt.Sprintf("%2d:%s", i+1, card.RenderCard(m.userGlobal.RenderEmoji))
+			s += fmt.Sprintf("%2d:%s", i+1, card.RenderCard(m.usc.RenderEmoji()))
 		}
 	}
 	return s
@@ -544,7 +552,7 @@ func (m *gsModel) updateHand(delay bool) tea.Cmd {
 		if m.gameOver {
 			return nil
 		}
-		newHand := m.userGlobal.ReqHandler.HandRequest()
+		newHand := m.usc.ReqHandler().HandRequest()
 
 		return updateHandMsg{newHand}
 	}
@@ -566,7 +574,7 @@ func (m *gsModel) playCard(index int) tea.Cmd {
 					newHand = append(newHand, (m.hand)[i])
 				}
 			}
-			if !m.userGlobal.ReqHandler.PlayCardRequest(index) {
+			if !m.usc.ReqHandler().PlayCardRequest(index) {
 				return nil
 			}
 			return localUpdateHandMsg{newHand}
@@ -578,7 +586,7 @@ func (m *gsModel) playCard(index int) tea.Cmd {
 func (m *gsModel) swapBottomCard() tea.Cmd {
 	if m.statusBar.isMyTurn() && m.statusBar.canSwap {
 		return func() tea.Msg {
-			if !m.userGlobal.ReqHandler.SwapBottomCardRequest() {
+			if !m.usc.ReqHandler().SwapBottomCardRequest() {
 				return nil
 			}
 			return nil

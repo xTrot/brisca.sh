@@ -10,8 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish/bubbletea"
 )
 
 /*
@@ -32,13 +30,16 @@ const (
 	textInputView sessionState = iota
 )
 
+var (
+	USE_DEFAULT = ""
+)
+
 type RegisterModel struct {
-	state      sessionState
-	textInput  textinput.Model
-	help       HelpModel
-	isUp       bool
-	userGlobal UserGlobal
-	browser    string
+	state     sessionState
+	textInput textinput.Model
+	help      HelpModel
+	isUp      bool
+	usc       UserScreenContext
 
 	upStyle       lipgloss.Style
 	downStyle     lipgloss.Style
@@ -46,11 +47,11 @@ type RegisterModel struct {
 	registerStyle lipgloss.Style
 }
 
-func NewRegisterScreen(session *ssh.Session, browser string, gameServer string) RegisterModel {
+func NewRegisterScreen(usc UserScreenContext) RegisterModel {
 
 	m := RegisterModel{
-		state:   textInputView,
-		browser: browser,
+		state: textInputView,
+		usc:   usc,
 	}
 	m.textInput = textinput.New()
 	m.textInput.Placeholder = "Guest"
@@ -59,24 +60,16 @@ func NewRegisterScreen(session *ssh.Session, browser string, gameServer string) 
 	m.textInput.Width = 20
 	m.textInput.Prompt = "\tWhat's your username?\n\t\t> "
 	m.help = NewHelp()
-	m.userGlobal = UserGlobal{
-		Session:     *session,
-		Renderer:    bubbletea.MakeRenderer(*session),
-		ReqHandler:  requests.NewHandler(browser, gameServer),
-		RenderEmoji: true,
+	m.isUp = m.usc.ReqHandler().StatusRequest(requests.BROWSER)
 
-		LastRegisteredAction: time.Now(),
-	}
-	m.isUp = m.userGlobal.ReqHandler.StatusRequest(requests.BROWSER)
-
-	m.upStyle = m.userGlobal.Renderer.NewStyle().Foreground(lipgloss.Color("10"))
-	m.downStyle = m.userGlobal.Renderer.NewStyle().Foreground(lipgloss.Color("9"))
-	m.helpStyle = m.userGlobal.Renderer.NewStyle().
+	m.upStyle = m.usc.Renderer().NewStyle().Foreground(lipgloss.Color("10"))
+	m.downStyle = m.usc.Renderer().NewStyle().Foreground(lipgloss.Color("9"))
+	m.helpStyle = m.usc.Renderer().NewStyle().
 		Foreground(lipgloss.Color("241")).
 		Width(75).Height(5).
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.HiddenBorder())
-	m.registerStyle = m.userGlobal.Renderer.NewStyle().
+	m.registerStyle = m.usc.Renderer().NewStyle().
 		Width(75).Height(15).
 		Align(lipgloss.Left, lipgloss.Center).
 		BorderStyle(lipgloss.NormalBorder()).
@@ -88,21 +81,21 @@ func NewRegisterScreen(session *ssh.Session, browser string, gameServer string) 
 func (m RegisterModel) Init() tea.Cmd {
 	// start the timer and spinner on program start
 	return tea.Batch(textinput.Blink, m.help.Init(),
-		tea.SetWindowTitle("brisca.sh"))
+		tea.SetWindowTitle("brisca.sh"), m.usc.Init())
 }
 
 func (m RegisterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	quit, cmd := HasRetiredUser(m.userGlobal)
+	quit, cmd := HasRetiredUser(&m.usc)
 	if cmd != nil {
 		return quit, cmd
 	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
+		m.usc.SetWindowsSize(msg)
 
 	case tea.KeyMsg:
 		switch {
@@ -114,9 +107,9 @@ func (m RegisterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.help.Keys.Enter):
 			var register requests.Register
 			register.Username = m.textInput.Value()
-			if m.userGlobal.ReqHandler.RegisterRequest(register, m.browser) {
-				m.userGlobal.Username = register.Username
-				lm := NewLobby(m.userGlobal)
+			if m.usc.ReqHandler().RegisterRequest(register, USE_DEFAULT) {
+				m.usc.SetUsername(register.Username)
+				lm := NewLobby(m.usc)
 				return lm, tea.Batch(lm.Init())
 			}
 		}

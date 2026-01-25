@@ -13,19 +13,19 @@ import (
 )
 
 type makeGameModel struct {
-	form       *huh.Form // huh.Form is just a tea.Model
-	nextView   tea.Model
-	userGlobal UserGlobal
-	confirm    *bool
-	waiting    bool
-	waitStyle  lipgloss.Style
-	spinner    spinner.Model
+	form      *huh.Form // huh.Form is just a tea.Model
+	nextView  tea.Model
+	usc       UserScreenContext
+	confirm   *bool
+	waiting   bool
+	waitStyle lipgloss.Style
+	spinner   spinner.Model
 
 	helpMd MarkdownModel
 	showMd bool
 }
 
-func newMakeGame(nv tea.Model, userGlobal UserGlobal) makeGameModel {
+func newMakeGame(nv tea.Model, usc UserScreenContext) makeGameModel {
 	var confirm bool
 	return makeGameModel{
 		confirm: &confirm,
@@ -57,17 +57,17 @@ func newMakeGame(nv tea.Model, userGlobal UserGlobal) makeGameModel {
 					Value(&confirm),
 			),
 		),
-		nextView:   nv,
-		userGlobal: userGlobal,
-		helpMd:     NewMarkdownModel(embedded.MakeGameHelp, true, ""),
-		waiting:    false,
-		waitStyle: userGlobal.Renderer.NewStyle().
+		nextView: nv,
+		usc:      usc,
+		helpMd:   NewMarkdownModel(embedded.MakeGameHelp, true, ""),
+		waiting:  false,
+		waitStyle: usc.Renderer().NewStyle().
 			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Center),
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
 			spinner.WithStyle(
-				userGlobal.Renderer.NewStyle().
+				usc.Renderer().NewStyle().
 					AlignHorizontal(lipgloss.Center).
 					AlignVertical(lipgloss.Center),
 			),
@@ -79,7 +79,7 @@ func (m makeGameModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.form.Init(),
 		m.spinner.Tick,
-		m.userGlobal.LastWindowSizeReplay(),
+		m.usc.LastWindowSizeReplay(),
 	)
 }
 
@@ -87,12 +87,12 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ...
 
 	var cmds []tea.Cmd
-	quit, cmd := HasRetiredUser(m.userGlobal)
+	quit, cmd := HasRetiredUser(&m.usc)
 	if cmd != nil {
 		return quit, cmd
 	}
 
-	if time.Now().After(m.userGlobal.ReqHandler.RefreshBy) {
+	if time.Now().After(m.usc.ReqHandler().RefreshBy) {
 		log.Debug("Idle Disconnect")
 		return NewModel("Idle Disconnect")
 	}
@@ -130,8 +130,8 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		log.Debug("Making game successful", "game", msg)
-		m.userGlobal.ReqHandler.SetGameServer(msg.GameServer)
-		wrm := newWaitingRoom(m.userGlobal)
+		m.usc.ReqHandler().SetGameServer(msg.GameServer)
+		wrm := newWaitingRoom(m.usc)
 		wrm.list.Title = "GameID: " + msg.GameId
 		return wrm, wrm.Init()
 
@@ -146,7 +146,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		m.userGlobal.SizeMsg = msg
+		m.usc.SetWindowsSize(msg)
 		m.waitStyle = m.waitStyle.
 			Height(msg.Height).
 			Width(msg.Width)
@@ -165,7 +165,7 @@ func (m makeGameModel) makeGame(gc requests.GameConfig) tea.Cmd {
 	return func() tea.Msg {
 		log.Debug("makeGame request", "gc", gc)
 		time.Sleep(time.Second)
-		return m.userGlobal.ReqHandler.MakeGameRequest(gc)
+		return m.usc.ReqHandler().MakeGameRequest(gc)
 	}
 }
 
