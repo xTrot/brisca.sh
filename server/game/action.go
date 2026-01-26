@@ -247,9 +247,19 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		}
 		a.Payload = gameWon
 	case "SEAT_AFK":
-		a.Payload = SeatAfkPayload{}
+		seat := SeatAfkPayload{}
+		err := json.Unmarshal(payloadBytes, &seat)
+		if err != nil {
+			return err
+		}
+		a.Payload = seat
 	case "SEAT_NOT_AFK":
-		a.Payload = SeatNotAfkPayload{}
+		seat := SeatNotAfkPayload{}
+		err := json.Unmarshal(payloadBytes, &seat)
+		if err != nil {
+			return err
+		}
+		a.Payload = seat
 	default:
 		log.Errorf("action.UnmarshalJSON: unexpected type: type = %s", a.Type)
 		a.Payload = UndefinedActionPayload{}
