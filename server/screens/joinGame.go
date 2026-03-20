@@ -10,7 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 type joinGameModel struct {
@@ -103,7 +102,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if time.Now().After(m.usc.ReqHandler().RefreshBy) {
-		log.Debug("Idle Disconnect")
+		logger.Debug("Idle Disconnect")
 		return NewModel("Idle Disconnect")
 	}
 
@@ -120,7 +119,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.replay {
 
 			cmd = func() tea.Msg {
-				log.Debug("Requesting replay:",
+				logger.Debug("Requesting replay:",
 					"m.usc.Username", m.usc.Username,
 					"gameId", gameId,
 				)
@@ -128,14 +127,14 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				rtn := replayMsg(
 					m.usc.ReqHandler().ReplayRequest(gameId),
 				)
-				log.Debug("Result:", "rtn", rtn)
+				logger.Debug("Result:", "rtn", rtn)
 				return rtn
 			}
 
 		} else {
 
 			cmd = func() tea.Msg {
-				log.Debug("Requesting joinPrivateGame:",
+				logger.Debug("Requesting joinPrivateGame:",
 					"m.usc.Username", m.usc.Username,
 					"gameId", gameId,
 				)
@@ -146,7 +145,7 @@ func (m joinGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.usc.Username(),
 					),
 				)
-				log.Debug("Result:", "rtn", rtn)
+				logger.Debug("Result:", "rtn", rtn)
 				return rtn
 			}
 

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/log"
+	"brisca.sh/server/logwrapper"
 )
 
 var (
@@ -32,6 +32,8 @@ var (
 		"BASTO",
 		"ESPADA",
 	}
+
+	logger = logwrapper.NewLogger()
 )
 
 type Card struct {
@@ -53,7 +55,7 @@ func NewCard(cardString string) Card {
 	suitString := halves[0]
 	num, err := strconv.Atoi(halves[1])
 	if err != nil {
-		log.Error("Error parsing str to int for hand request.")
+		logger.Error("Error parsing str to int for hand request.")
 		return card
 	}
 

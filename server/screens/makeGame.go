@@ -9,7 +9,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 type makeGameModel struct {
@@ -93,7 +92,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if time.Now().After(m.usc.ReqHandler().RefreshBy) {
-		log.Debug("Idle Disconnect")
+		logger.Debug("Idle Disconnect")
 		return NewModel("Idle Disconnect")
 	}
 
@@ -129,7 +128,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.nextView, m.nextView.Init()
 		}
 
-		log.Debug("Making game successful", "game", msg)
+		logger.Debug("Making game successful", "game", msg)
 		m.usc.ReqHandler().SetGameServer(msg.GameServer)
 		wrm := newWaitingRoom(m.usc)
 		wrm.list.Title = "GameID: " + msg.GameId
@@ -163,7 +162,7 @@ func (m makeGameModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m makeGameModel) makeGame(gc requests.GameConfig) tea.Cmd {
 	return func() tea.Msg {
-		log.Debug("makeGame request", "gc", gc)
+		logger.Debug("makeGame request", "gc", gc)
 		time.Sleep(time.Second)
 		return m.usc.ReqHandler().MakeGameRequest(gc)
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 var (
@@ -229,7 +228,7 @@ func (m gsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if !m.gameOver && msg.gameOver {
 			m.gameOver = msg.gameOver
-			log.Debug("gameOver:", "gameId", m.gameConfig.GameId)
+			logger.Debug("gameOver:", "gameId", m.gameConfig.GameId)
 		}
 		cmd = m.Refresh()
 		cmds = append(cmds, cmd)
@@ -400,7 +399,7 @@ func (m gsModel) processSeats(seats []game.Seat) tea.Cmd {
 			player := newPlayerModelFromSeat(seats[i], m.usc.RenderEmoji())
 			// This part only works because case mySeat: happens first then seatsMsg
 			adjustedSeat := (i - m.statusBar.mySeat + m.gameConfig.MaxPlayers) % m.gameConfig.MaxPlayers
-			log.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.statusBar.turn, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
+			logger.Debug("gsModel:", "adjustedSeat", adjustedSeat, "i", i, "m.mySeat", m.statusBar.turn, "m.gameConfig.MaxPlayers", m.gameConfig.MaxPlayers)
 			switch m.gameConfig.MaxPlayers {
 			case 2:
 				player.boxX = SEAT_BASED_BOXES_2P[adjustedSeat][0]

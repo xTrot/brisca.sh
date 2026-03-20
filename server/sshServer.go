@@ -3,6 +3,9 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -10,12 +13,13 @@ import (
 	"syscall"
 	"time"
 
+	"brisca.sh/server/logwrapper"
+	"brisca.sh/server/otel"
 	"brisca.sh/server/requests"
 	"brisca.sh/server/screens"
 	gossh "golang.org/x/crypto/ssh"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/activeterm"
@@ -31,6 +35,8 @@ var (
 	allowedKeyTypes = "ssh-rsa, "
 	Env             Environment
 	keyPath         = ".ssh/id_ed25519"
+
+	logger = logwrapper.NewLogger()
 )
 
 type Environment struct {
@@ -44,6 +50,10 @@ type Environment struct {
 	GameServer    string `default:"http://games:8000"`
 }
 
+func (m Environment) String() string {
+	return fmt.Sprintf("%#v", m)
+}
+
 func Start() {
 	os.Setenv("GLAMOUR_STYLE", "dracula")
 	err := envconfig.Process("brisca", &Env)
@@ -51,6 +61,16 @@ func Start() {
 		log.Fatal(err.Error())
 		panic("defaults loading failed.")
 	}
+
+	ctx := context.Background()
+
+	otelShutdown, err := otel.SetupOTelSDK(ctx)
+	if err != nil {
+		log.Fatalf("Error setting up OTEL SDK err=%v", err)
+	}
+	defer func() {
+		err = errors.Join(err, otelShutdown(ctx))
+	}()
 
 	s, err := wish.NewServer(
 		wish.WithAddress(net.JoinHostPort(Env.Host, Env.Port)),
@@ -69,52 +89,48 @@ func Start() {
 	)
 
 	if err != nil {
-		log.Error("Could not start server", "error", err)
+		logger.Error("Could not start server", "error", err)
 	}
 
 	if Env.Debug {
-		log.SetLevel(log.DebugLevel)
-		log.Helper()
-		log.SetReportCaller(true)
-		log.Debug("Debug Started")
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+		logger.Debug("Debug Started")
 	}
 
-	log.Debug("Env:", "env", Env)
+	logger.Debug("Env:", "env", Env)
 
 	s.IdleTimeout = 15 * time.Minute
-	log.Info("Server", "s.IdleTimeout", s.IdleTimeout)
+	logger.Info("Server", "s.IdleTimeout", s.IdleTimeout.String())
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	log.Info("Starting SSH server", "host", Env.Host, "port", Env.Port)
+	logger.Info("Starting SSH server", "host", Env.Host, "port", Env.Port)
 	go func() {
 		if err = s.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
-			log.Error("Could not start server", "error", err)
+			logger.Error("Could not start server", "error", err)
 			done <- nil
 		}
 	}()
 
 	sig := <-done
-	log.Info("Initiating graceful shutdown, Received signal: ", "sig", sig)
-	log.Info("Performing cleanup operations...")
+	logger.Info("Initiating graceful shutdown, Received signal: ", "sig", sig)
+	logger.Info("Performing cleanup operations...")
 
 	screens.Retired = true
-	log.Info("Retired set to true.")
+	logger.Info("Retired set to true.")
 
-	log.Info("Stopping SSH server")
+	logger.Info("Stopping SSH server")
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
-		log.Error("Could not stop server", "error", err)
+		logger.Error("Could not stop server", "error", err)
 	}
 
-	log.Info("Application shut down gracefully.")
+	logger.Info("Application shut down gracefully.")
 
-	if log.GetLevel() == log.DebugLevel {
-
-		log.Debug("Let me read the logs before shutting down.")
+	if Env.Debug {
+		logger.Debug("Let me read the logs before shutting down.")
 		time.Sleep(5 * time.Second)
-
 	}
 
 	//
@@ -142,7 +158,7 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 func keyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	if !strings.Contains(allowedKeyTypes, key.Type()) {
 		allowedKeyTypes += key.Type() + ", "
-		log.Info("newKeyTypeAdded:", "allowedKeyTypes", allowedKeyTypes)
+		logger.Info("newKeyTypeAdded:", "allowedKeyTypes", allowedKeyTypes)
 	}
 	return true
 }
@@ -154,7 +170,7 @@ func AuthMiddleware() wish.Middleware {
 
 			if keyUserGave == nil {
 				if sess.User() != "root" {
-					log.Info("AuthMiddleware: No key provided.")
+					logger.Info("AuthMiddleware: No key provided.")
 				}
 				next(sess)
 				return
@@ -162,20 +178,20 @@ func AuthMiddleware() wish.Middleware {
 
 			if !strings.Contains(allowedKeyTypes, keyUserGave.Type()) {
 				allowedKeyTypes += keyUserGave.Type() + ", "
-				log.Info("newKeyTypeAdded:", "allowedKeyTypes", allowedKeyTypes)
+				logger.Info("newKeyTypeAdded:", "allowedKeyTypes", allowedKeyTypes)
 			}
 
 			var found bool
 			for name, pubkey := range db {
 				keyStored, _, _, _, _ := ssh.ParseAuthorizedKey([]byte(pubkey))
 				if ssh.KeysEqual(keyUserGave, keyStored) {
-					log.Info("AuthMiddleWare: I remember,", "name", name)
+					logger.Info("AuthMiddleWare: I remember,", "name", name)
 					found = true
 				}
 			}
 
 			if !found {
-				log.Info("AuthMiddleware: I don't remember, I can offer to remember you!", "name", sess.User())
+				logger.Info("AuthMiddleware: I don't remember, I can offer to remember you!", "name", sess.User())
 			}
 
 			next(sess)

@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 const (
@@ -163,7 +162,7 @@ func (m waitingRoomModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.usc.SetWindowsSize(msg)
 		h, v := m.docStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
-		log.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
+		logger.Debug("waitingRoomModel.Update: case tea.WindowSizeMsg:")
 
 	case tea.KeyMsg:
 		cmd = m.refreshSessionCheck()

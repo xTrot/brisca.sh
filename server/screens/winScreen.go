@@ -5,14 +5,15 @@ import (
 	"time"
 
 	"brisca.sh/server/game"
+	"brisca.sh/server/logwrapper"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 var (
 	DEBOUNCE_TIME = time.Second
+	logger        = logwrapper.NewLogger()
 )
 
 type winScreen struct {
@@ -194,7 +195,7 @@ func (m winScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case doneCounting:
 		m.countDone++
-		log.Debug("case doneCounting:", "msg", msg)
+		logger.Debug("case doneCounting:", "msg", msg)
 	}
 
 	return m, tea.Batch(cmds...)

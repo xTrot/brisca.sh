@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"brisca.sh/server/game"
+	"brisca.sh/server/logwrapper"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/log"
 )
 
 type ServerType int
@@ -20,6 +21,10 @@ type ServerType int
 const (
 	BROWSER ServerType = iota
 	GAME    ServerType = iota
+)
+
+var (
+	logger = logwrapper.NewLogger()
 )
 
 type Handler struct {
@@ -70,7 +75,7 @@ func (m *Handler) getRequest(url string) (string, error) {
 
 	res, err := client.Get(url)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err, "res", res)
+		logger.Error("Get:", "url", url, "err", err, "res", res)
 		return "", err
 	}
 
@@ -86,7 +91,7 @@ func (m *Handler) getRequest(url string) (string, error) {
 	body := new(strings.Builder)
 	_, err = io.Copy(body, res.Body)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err, "res", res, "body", body.String())
+		logger.Error("Get:", "url", url, "err", err, "res", res, "body", body.String())
 		return "", err
 	}
 
@@ -103,7 +108,7 @@ func (m *Handler) postRequest(url string, payload []byte) (string, error) {
 
 	res, err := client.Post(url, "raw", reader)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err, "res", res)
+		logger.Error("Get:", "url", url, "err", err, "res", res)
 		return "", err
 	}
 
@@ -119,7 +124,7 @@ func (m *Handler) postRequest(url string, payload []byte) (string, error) {
 	body := new(strings.Builder)
 	_, err = io.Copy(body, res.Body)
 	if err != nil {
-		log.Error("Get:", "url", url, "err", err, "res", res, "body", body.String())
+		logger.Error("Get:", "url", url, "err", err, "res", res, "body", body.String())
 		return "", err
 	}
 
@@ -139,10 +144,10 @@ func (m *Handler) RefreshSessionCheck(before time.Duration) tea.Msg {
 		return rtn
 	}
 
-	if log.GetLevel() == log.DebugLevel {
-		log.Debug("Time: ", "timeBefore", timeBefore)
-		log.Debug("Time: ", "now       ", now)
-		log.Debug("Time: ", "expires   ", expires)
+	if logger.Enabled(slog.LevelDebug) {
+		logger.Debug("Time: ", "timeBefore", timeBefore)
+		logger.Debug("Time: ", "now       ", now)
+		logger.Debug("Time: ", "expires   ", expires)
 	}
 
 	rtn = m.refreshSessionRequest()
@@ -258,7 +263,7 @@ func (m Handler) StatusRequest(stype ServerType) bool {
 	requestURL := fmt.Sprintf("%s/status", url)
 	_, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("StatusRequest:", "url", requestURL, "err", err)
+		logger.Error("StatusRequest:", "url", requestURL, "err", err)
 		return false
 	}
 
@@ -278,20 +283,20 @@ func (m *Handler) RegisterRequest(register Register, server string) bool {
 	}
 
 	tryString := fmt.Sprintf("%s, %s", requestURL, register.Username)
-	log.Debug("Register, trying: ", "tryString", tryString)
+	logger.Debug("Register, trying: ", "tryString", tryString)
 
 	res, err := client.Post(requestURL, "raw", reader)
 	if err != nil {
-		log.Error("RegisterRequest:", "url", requestURL, "err", err, "res", res)
+		logger.Error("RegisterRequest:", "url", requestURL, "err", err, "res", res)
 		return false
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("RegisterRequest:", "url", requestURL, "err", err, "res", res)
+		logger.Error("RegisterRequest:", "url", requestURL, "err", err, "res", res)
 		return false
 	}
 
-	log.Debug("Register success:", "register.Username", register.Username)
+	logger.Debug("Register success:", "register.Username", register.Username)
 
 	cookies := res.Cookies()
 	for i := range cookies {
@@ -299,11 +304,11 @@ func (m *Handler) RegisterRequest(register Register, server string) bool {
 		if cookie.Name != "userId" {
 			continue
 		}
-		log.Debug("Inspecting cookie expiration:", "cookie.RawExpires", cookie.RawExpires)
+		logger.Debug("Inspecting cookie expiration:", "cookie.RawExpires", cookie.RawExpires)
 		m.RefreshBy, err = time.Parse(time.RFC1123, cookie.RawExpires)
 		if err != nil {
-			log.Error("Error parsing time by RFC1123 failed.", "cookie.RawExpires", cookie.RawExpires)
-			log.Error("Error:", "err", err)
+			logger.Error("Error parsing time by RFC1123 failed.", "cookie.RawExpires", cookie.RawExpires)
+			logger.Error("Error:", "err", err)
 			return false
 		}
 	}
@@ -319,7 +324,7 @@ func (m Handler) LobbyRequest() []list.Item {
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("Lobby Request:", "url", requestURL, "err", err, "body", body)
+		logger.Error("Lobby Request:", "url", requestURL, "err", err, "body", body)
 		return items
 	}
 
@@ -341,7 +346,7 @@ func (m *Handler) MakeGameRequest(gc GameConfig) NewGame {
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("MakeGameRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("MakeGameRequest:", "url", requestURL, "err", err, "body", body)
 		return game
 	}
 
@@ -356,7 +361,7 @@ func (m Handler) WaitingRoomRequest() WaitingRoom {
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("WaitingRoom:", "url", requestURL, "err", err, "body", body)
+		logger.Error("WaitingRoom:", "url", requestURL, "err", err, "body", body)
 		return WaitingRoom{}
 	}
 
@@ -383,12 +388,12 @@ func (m Handler) LeaveGameRequest() bool {
 	if err != nil {
 		// statusErr, ok := err.(HttpStatusErr)
 		// if ok {
-		// 	log.Debug("HttpStatusErr type assertion ran.")
+		// 	logger.Debug("HttpStatusErr type assertion ran.")
 		// 	if statusErr.res.StatusCode >= 400 && 500 > statusErr.res.StatusCode {
 		// 		return false
 		// 	}
 		// }
-		log.Error("LeaveGameRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("LeaveGameRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
 
@@ -400,7 +405,7 @@ func (m Handler) ReadyRequest() bool {
 
 	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
-		log.Error("ReadyRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("ReadyRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
 
@@ -412,7 +417,7 @@ func (m Handler) StartGameRequest() bool {
 
 	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
-		log.Error("StartGameRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("StartGameRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
 
@@ -432,13 +437,13 @@ func (m *Handler) JoinGameRequest(gameId GameId, server, username string) NewGam
 
 	success := m.RegisterRequest(reg, tmpGameServer)
 	if !success {
-		log.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
+		logger.Error("Error registering to gameServer: ", "tmpGameServer", tmpGameServer)
 		return game
 	}
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("JoinGameRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("JoinGameRequest:", "url", requestURL, "err", err, "body", body)
 		return game
 	}
 
@@ -454,7 +459,7 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("JoinPrivateGameRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("JoinPrivateGameRequest:", "url", requestURL, "err", err, "body", body)
 		return gameRtn
 	}
 
@@ -470,7 +475,7 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame
 
 	success := m.RegisterRequest(reg, tmpGameServer)
 	if !success {
-		log.Error("Error registering to gameServer:", "tmpGameServer", tmpGameServer)
+		logger.Error("Error registering to gameServer:", "tmpGameServer", tmpGameServer)
 		return gameRtn
 	}
 
@@ -479,7 +484,7 @@ func (m *Handler) JoinPrivateGameRequest(gameId GameId, username string) NewGame
 
 	body, err = m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("JoinPrivateGameRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("JoinPrivateGameRequest:", "url", requestURL, "err", err, "body", body)
 		return gameRtn
 	}
 
@@ -495,7 +500,7 @@ func (m Handler) HandRequest() []game.Card {
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("HandRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("HandRequest:", "url", requestURL, "err", err, "body", body)
 		return hand
 	}
 
@@ -521,7 +526,7 @@ func (m Handler) PlayCardRequest(index int) bool {
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("PlayCardRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("PlayCardRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
 
@@ -534,7 +539,7 @@ func (m Handler) ActionsRequest() []game.Action {
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("ActionsRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("ActionsRequest:", "url", requestURL, "err", err, "body", body)
 		return actions
 	}
 
@@ -549,7 +554,7 @@ func (m Handler) MySeatRequest() MySeat {
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("MySeatRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("MySeatRequest:", "url", requestURL, "err", err, "body", body)
 		return seat
 	}
 
@@ -568,7 +573,7 @@ func (m Handler) ChangeTeamRequest(spectator bool) bool {
 
 	body, err := m.postRequest(requestURL, payload)
 	if err != nil {
-		log.Error("ChangeTeamRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("ChangeTeamRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
 
@@ -580,7 +585,7 @@ func (m Handler) SwapBottomCardRequest() bool {
 
 	body, err := m.postRequest(requestURL, []byte(""))
 	if err != nil {
-		log.Error("SwapBottomCardRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("SwapBottomCardRequest:", "url", requestURL, "err", err, "body", body)
 		return false
 	}
 
@@ -592,7 +597,7 @@ func (m Handler) ReplayRequest(gameId GameId) []game.Action {
 
 	body, err := m.getRequest(requestURL)
 	if err != nil {
-		log.Error("ReplayRequest:", "url", requestURL, "err", err, "body", body)
+		logger.Error("ReplayRequest:", "url", requestURL, "err", err, "body", body)
 		return nil
 	}
 
@@ -612,12 +617,12 @@ func (m *Handler) refreshSessionRequest() tea.Msg {
 
 	res, err := client.Get(requestURL)
 	if err != nil {
-		log.Error("refreshSessionRequest:", "url", requestURL, "err", err, "res", res)
+		logger.Error("refreshSessionRequest:", "url", requestURL, "err", err, "res", res)
 		return nil
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Error("refreshSessionRequest:", "url", requestURL, "err", err, "res", res)
+		logger.Error("refreshSessionRequest:", "url", requestURL, "err", err, "res", res)
 		return nil
 	}
 
@@ -628,7 +633,7 @@ func (m *Handler) refreshSessionRequest() tea.Msg {
 			continue
 		}
 		msg = RefreshByMsg(cookie.Expires)
-		log.Debug("Cookies from body: ", "cookie", cookie)
+		logger.Debug("Cookies from body: ", "cookie", cookie)
 	}
 
 	client.Jar.SetCookies(res.Request.URL, res.Cookies())

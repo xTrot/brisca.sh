@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 )
 
 const (
@@ -153,7 +152,7 @@ func (m lobbyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if time.Now().After(m.usc.ReqHandler().RefreshBy) {
-		log.Debug("Idle Disconnect")
+		logger.Debug("Idle Disconnect")
 		return NewModel("Idle Disconnect")
 	}
 

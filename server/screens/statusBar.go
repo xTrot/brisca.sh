@@ -8,7 +8,6 @@ import (
 	"brisca.sh/server/requests"
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/log"
 )
 
 var (
@@ -79,7 +78,7 @@ func (m statusBarModel) Update(msg tea.Msg) (statusBarModel, tea.Cmd) {
 		if m.maxPlayers == 0 {
 			errMsg := "m.maxPlayers must be set before " +
 				"case cardPlayedPayload: in statusBarModel.Update"
-			log.Fatal(errMsg)
+			logger.Error(errMsg)
 			panic(errMsg)
 		}
 		m.cardsPlayed++

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/log"
 )
 
 const (
@@ -261,7 +260,7 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		}
 		a.Payload = seat
 	default:
-		log.Errorf("action.UnmarshalJSON: unexpected type: type = %s", a.Type)
+		logger.Error("action.UnmarshalJSON: unexpected", "type", a.Type)
 		a.Payload = UndefinedActionPayload{}
 	}
 
