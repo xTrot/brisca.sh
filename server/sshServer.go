@@ -93,7 +93,7 @@ func Start() {
 	}
 
 	if Env.Debug {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
+		logger.SetLevel(slog.LevelDebug)
 		logger.Debug("Debug Started")
 	}
 

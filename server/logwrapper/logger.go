@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/charmbracelet/log"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 )
 
@@ -21,6 +22,11 @@ type Logger struct {
 	inner    slog.Logger
 	format   string
 	hostname string
+}
+
+func (m Logger) SetLevel(level slog.Level) {
+	log.SetLevel(log.Level(int(level)))
+	slog.SetLogLoggerLevel(level)
 }
 
 func (m *Logger) Enabled(level slog.Level) bool {
@@ -83,26 +89,33 @@ func (m *Logger) wrapperAid(
 	callerLevel slog.Level, ctx context.Context,
 	msg string, keyvals ...any,
 ) {
-	var call func(string, ...any)
+	var slogCall func(string, ...any)
+	var logCall func(any, ...any)
 	if !slog.Default().Enabled(ctx, callerLevel) {
 		return
 	}
 	switch callerLevel {
 
 	case slog.LevelDebug:
-		call = m.inner.Debug
+		logCall = log.Debug
+		slogCall = m.inner.Debug
 	case slog.LevelInfo:
-		call = m.inner.Info
+		logCall = log.Info
+		slogCall = m.inner.Info
 	case slog.LevelWarn:
-		call = m.inner.Warn
+		logCall = log.Warn
+		slogCall = m.inner.Warn
 	case slog.LevelError:
-		call = m.inner.Error
+		logCall = log.Error
+		slogCall = m.inner.Error
 
 	default:
 		return
 	}
-	call(
-		m.keyValAid(msg, keyvals...),
+	formatOnce := m.keyValAid(msg, keyvals...)
+	logCall(formatOnce)
+	slogCall(
+		formatOnce,
 		"host_name", m.hostname,
 		"line_info", lineInfo(),
 	)
